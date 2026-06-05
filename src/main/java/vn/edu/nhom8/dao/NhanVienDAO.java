@@ -1,17 +1,17 @@
-package vn.edu.project.dao;
+package vn.edu.nhom8.dao;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import vn.edu.project.model.NhanVien;
-import vn.edu.project.util.DBConnection; 
+import vn.edu.nhom8.model.NhanVien;
+import vn.edu.nhom8.util.DBConnection; 
 
 public class NhanVienDAO implements INhanVienDAO {
 
     @Override
     public NhanVien login(String taiKhoan, String matKhau) {
         String sql = "{CALL sp_Login(?, ?)}";
-        DBConnection db = new DBConnection(); // Đưa hẳn ra ngoài try-with-resources
+        DBConnection db = new DBConnection(); 
         
         try (Connection con = db.getConnection();
              CallableStatement cstmt = con.prepareCall(sql)) {
