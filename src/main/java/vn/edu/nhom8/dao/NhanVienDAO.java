@@ -1,39 +1,116 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.edu.nhom8.dao;
 
-import vn.edu.nhom8.model.NhanVien;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import vn.edu.nhom8.model.NhanVien;
+import vn.edu.nhom8.util.DBConnection; 
 
-public class NhanVienDAO {
-    
-    public boolean login(String taiKhoan, String matKhau) {
-        return true;
+public class NhanVienDAO implements INhanVienDAO {
+
+    @Override
+    public NhanVien login(String taiKhoan, String matKhau) {
+        String sql = "{CALL sp_Login(?, ?)}";
+        DBConnection db = new DBConnection(); 
+        
+        try (Connection con = db.getConnection();
+             CallableStatement cstmt = con.prepareCall(sql)) {
+            
+            cstmt.setString(1, taiKhoan);
+            cstmt.setString(2, matKhau);
+            
+            try (ResultSet rs = cstmt.executeQuery()) {
+                if (rs.next()) {
+                    NhanVien nv = new NhanVien();
+                    nv.setMaNV(rs.getString("maNV"));
+                    nv.setHoTen(rs.getString("hoTen"));
+                    nv.setVaiTro(rs.getString("vaiTro"));
+                    nv.setTaiKhoan(rs.getString("taiKhoan"));
+                    nv.setTrangThai(rs.getString("trangThai"));
+                    return nv;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
-    public NhanVien getNhanVienById(String maNV) {
-        return new NhanVien("NV001", "Nguyen Van Khoi", "Admin", "khoinv", "hash_code", "HoatDong");
+    @Override
+    public boolean deactivate(String maNV) {
+        String sql = "{CALL sp_DeactivateNhanVien(?)}";
+        DBConnection db = new DBConnection();
+        
+        try (Connection con = db.getConnection();
+             CallableStatement cstmt = con.prepareCall(sql)) {
+            
+            cstmt.setString(1, maNV);
+            return cstmt.executeUpdate() > 0;
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
-    public List<NhanVien> getAllNhanVien() {
+    @Override
+    public NhanVien findById(String maNV) {
+        String sql = "{CALL sp_FindNhanVienById(?)}";
+        DBConnection db = new DBConnection();
+        
+        try (Connection con = db.getConnection();
+             CallableStatement cstmt = con.prepareCall(sql)) {
+            
+            cstmt.setString(1, maNV);
+            try (ResultSet rs = cstmt.executeQuery()) {
+                if (rs.next()) {
+                    NhanVien nv = new NhanVien();
+                    nv.setMaNV(rs.getString("maNV"));
+                    nv.setHoTen(rs.getString("hoTen"));
+                    nv.setVaiTro(rs.getString("vaiTro"));
+                    nv.setTaiKhoan(rs.getString("taiKhoan"));
+                    nv.setTrangThai(rs.getString("trangThai"));
+                    return nv;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    public List<NhanVien> findAll() {
         List<NhanVien> list = new ArrayList<>();
-        list.add(new NhanVien("NV001", "Nguyen Van Khoi", "Admin", "khoinv", "hash_code", "HoatDong"));
-        list.add(new NhanVien("NV002", "Nguyen Van Huy", "Developer", "huynv", "hash_code", "HoatDong"));
+        String sql = "{CALL sp_FindAllNhanVien}";
+        DBConnection db = new DBConnection();
+        
+        try (Connection con = db.getConnection();
+             CallableStatement cstmt = con.prepareCall(sql);
+             ResultSet rs = cstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                NhanVien nv = new NhanVien();
+                nv.setMaNV(rs.getString("maNV"));
+                nv.setHoTen(rs.getString("hoTen"));
+                nv.setVaiTro(rs.getString("vaiTro"));
+                nv.setTaiKhoan(rs.getString("taiKhoan"));
+                nv.setTrangThai(rs.getString("trangThai"));
+                list.add(nv);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return list;
     }
 
-    public boolean insertNhanVien(NhanVien nv) {
-        return true;
+    @Override
+    public boolean insert(NhanVien nv) {
+        return false;
     }
 
-    public boolean updateNhanVien(NhanVien nv) {
-        return true;
-    }
-
-    public boolean deactivateNhanVien(String maNV) {
-        return true;
+    @Override
+    public boolean update(NhanVien nv) {
+        return false;
     }
 }
