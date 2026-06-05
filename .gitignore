@@ -1,4 +1,4 @@
 target/
 .vscode/
 *.class
-src/main/resources/db.properties
+db.properties

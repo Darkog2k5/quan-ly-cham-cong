@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package vn.edu.project.dao;
+package vn.edu.nhom8.dao;
 
 /**
  *
@@ -10,7 +10,7 @@ package vn.edu.project.dao;
  */
 
 
-import vn.edu.project.model.LichPhanCa;
+import vn.edu.nhom8.model.LichPhanCa;
 import java.util.List;
 
 public interface ILichPhanCaDAO {

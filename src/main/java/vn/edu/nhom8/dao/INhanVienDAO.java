@@ -2,9 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
  */
-package vn.edu.project.dao;
+package vn.edu.nhom8.dao;
 
-import vn.edu.project.model.NhanVien;
+import vn.edu.nhom8.model.NhanVien;
 import java.util.List;
 
 public interface INhanVienDAO {

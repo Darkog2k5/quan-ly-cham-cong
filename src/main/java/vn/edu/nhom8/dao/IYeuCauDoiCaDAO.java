@@ -2,9 +2,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package vn.edu.project.dao;
+package vn.edu.nhom8.dao;
 
-import vn.edu.project.model.YeuCauDoiCa;
+import vn.edu.nhom8.model.YeuCauDoiCa;
 import java.util.List;
 
 public interface IYeuCauDoiCaDAO {
