@@ -8,9 +8,9 @@
  *
  * @author VICTUS
  */
-package vn.edu.project.dao;
+package vn.edu.nhom8.dao;
 
-import vn.edu.project.model.CaLamViec;
+import vn.edu.nhom8.model.CaLamViec;
 import java.util.List;
 
 public interface ICaLamViecDAO {
