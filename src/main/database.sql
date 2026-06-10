@@ -56,3 +56,57 @@ CREATE TABLE YeuCauDoiCa (
     ngayTao DATETIME DEFAULT GETDATE()
 );
 GO
+
+-- =====================================
+-- LOGIN
+-- =====================================
+GO
+CREATE PROCEDURE sp_Login
+    @TaiKhoan VARCHAR(50),
+    @MatKhau VARCHAR(255)
+AS
+BEGIN
+    SELECT *
+    FROM NhanVien
+    WHERE taiKhoan = @TaiKhoan
+      AND matKhau = @MatKhau
+      AND trangThai = N'HoatDong';
+END
+GO
+
+-- =====================================
+-- TÌM NHÂN VIÊN THEO MÃ
+-- =====================================
+CREATE PROCEDURE sp_FindNhanVienById
+    @MaNV VARCHAR(20)
+AS
+BEGIN
+    SELECT *
+    FROM NhanVien
+    WHERE maNV = @MaNV;
+END
+GO
+
+-- =====================================
+-- LẤY TOÀN BỘ NHÂN VIÊN
+-- =====================================
+CREATE PROCEDURE sp_FindAllNhanVien
+AS
+BEGIN
+    SELECT *
+    FROM NhanVien;
+END
+GO
+
+-- =====================================
+-- KHÓA NHÂN VIÊN
+-- =====================================
+CREATE PROCEDURE sp_DeactivateNhanVien
+    @MaNV VARCHAR(20)
+AS
+BEGIN
+    UPDATE NhanVien
+    SET trangThai = N'NgungHoatDong'
+    WHERE maNV = @MaNV;
+END
+GO
