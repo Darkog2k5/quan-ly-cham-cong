@@ -1,83 +1,125 @@
 package vn.edu.nhom8.ui;
 
+import vn.edu.nhom8.dao.ILichPhanCaDAO;
+import vn.edu.nhom8.dao.INhanVienDAO;
+import vn.edu.nhom8.dao.IYeuCauDoiCaDAO;
+import vn.edu.nhom8.model.LichPhanCa;
 import vn.edu.nhom8.model.NhanVien;
-import vn.edu.nhom8.util.SessionManager;
+import vn.edu.nhom8.model.YeuCauDoiCa;
+import vn.edu.nhom8.service.ManagerService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.List;
 
 /**
- * Màn hình Quản lý (Manager).
- * Toolbar: Xếp lịch NV | Duyệt đổi ca | Xem lịch tổng | Xuất báo cáo chấm công
+ * Màn hình Quản lý – F3.1 đến F3.3.
+ *
+ * Tab 1: Xếp lịch nhân viên  (F3.1)
+ * Tab 2: Duyệt đổi ca        (F3.2 + F3.3)
+ * Tab 3: Xem lịch tổng       (F3.2 hỗ trợ)
+ *
+ * F3.4 (Xuất báo cáo) do Kiệt phụ trách – để sẵn tab nhưng không code.
+ * Mọi nghiệp vụ nằm trong ManagerService – class này chỉ lo UI.
  */
 public class ManagerFrame extends BaseFrame {
 
-    private JTabbedPane tabs;
+    private final ManagerService service;
 
-    public ManagerFrame() {
+    private JTabbedPane tabs;
+    private static final int TAB_XEPLICH  = 0;
+    private static final int TAB_DUYET    = 1;
+    private static final int TAB_LICHTONG = 2;
+
+    // Widgets tab Xếp lịch
+    private List<JCheckBox>   checkBoxesNV = new ArrayList<>();
+    private List<NhanVien>    danhSachNV   = new ArrayList<>();
+    private DefaultTableModel lichDaXepModel;
+
+    // Widgets tab Duyệt đổi ca
+    private DefaultTableModel duyetModel;
+    private List<YeuCauDoiCa> dsYeuCau = new ArrayList<>();
+
+    // Widgets tab Lịch tổng
+    private JPanel   lichTongGrid;
+    private JLabel   lblTuan;
+    private Date     tuanBatDau;  // Thứ 2 của tuần hiện tại
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public ManagerFrame(INhanVienDAO nvDAO,
+                        ILichPhanCaDAO lichDAO,
+                        IYeuCauDoiCaDAO ycDAO) {
         super("Quản lý");
+        this.service = new ManagerService(lichDAO, nvDAO, ycDAO);
         buildContent();
+        loadStatBar();
         setVisible(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  TOOLBAR
-    // ═════════════════════════════════════════════════════════════════════════
+    public ManagerFrame() {
+        this(null, null, null);
+    }
+
+    // ── Toolbar ───────────────────────────────────────────────────────────────
 
     @Override
     protected JPanel buildToolbar() {
         JPanel tb = createToolbarPanel();
 
-        JButton btnXep  = toolbarBtn("📅", "Xếp lịch nhân viên");
-        JButton btnDuyet= toolbarBtn("✅", "Duyệt đổi ca");
-        JButton btnLich = toolbarBtn("📊", "Xem lịch tổng");
-        JButton btnBc   = toolbarBtn("📄", "Xuất báo cáo");
+        JButton btnXep   = toolbarBtn("📅", "Xếp lịch");
+        JButton btnDuyet = toolbarBtn("✅", "Duyệt đổi ca");
+        JButton btnLich  = toolbarBtn("📊", "Lịch tổng");
+        JButton btnLamMoi = toolbarBtn("🔃", "Làm mới");
 
-        btnXep.addActionListener(e   -> tabs.setSelectedIndex(0));
-        btnDuyet.addActionListener(e -> tabs.setSelectedIndex(1));
-        btnLich.addActionListener(e  -> tabs.setSelectedIndex(2));
-        btnBc.addActionListener(e    -> tabs.setSelectedIndex(3));
+        btnXep.addActionListener(e    -> tabs.setSelectedIndex(TAB_XEPLICH));
+        btnDuyet.addActionListener(e  -> tabs.setSelectedIndex(TAB_DUYET));
+        btnLich.addActionListener(e   -> tabs.setSelectedIndex(TAB_LICHTONG));
+        btnLamMoi.addActionListener(e -> refreshTab());
 
-        tb.add(btnXep);
-        tb.add(btnDuyet);
-        tb.add(toolbarSep());
-        tb.add(btnLich);
-        tb.add(btnBc);
+        tb.add(btnXep); tb.add(btnDuyet); tb.add(toolbarSep());
+        tb.add(btnLich); tb.add(toolbarSep());
+        tb.add(btnLamMoi);
         return tb;
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  CONTENT
-    // ═════════════════════════════════════════════════════════════════════════
+    // ── Build content ─────────────────────────────────────────────────────────
+
+    // Stat bar (4 số tổng quan)
+    private JPanel statBar;
 
     private void buildContent() {
-        // Stat bar
-        contentPanel.add(buildStatBar(), BorderLayout.NORTH);
+        statBar = buildStatBar();
+        contentPanel.add(statBar, BorderLayout.NORTH);
 
-        // Tabs
         tabs = new JTabbedPane(JTabbedPane.TOP);
         tabs.setFont(UITheme.FONT_BODY);
-        tabs.addTab("📅  Xếp lịch",        buildXepLichTab());
-        tabs.addTab("✅  Duyệt đổi ca",     buildDuyetDoiCaTab());
-        tabs.addTab("📊  Lịch tổng",        buildLichTongTab());
-        tabs.addTab("📄  Xuất báo cáo",     buildBaoCaoTab());
+        tabs.addTab("📅  Xếp lịch",    buildXepLichTab());
+        tabs.addTab("✅  Duyệt đổi ca", buildDuyetTab());
+        tabs.addTab("📊  Lịch tổng",    buildLichTongTab());
+
+        tabs.addChangeListener(e -> {
+            if (tabs.getSelectedIndex() == TAB_DUYET)    loadYeuCauChoDuyet();
+            if (tabs.getSelectedIndex() == TAB_LICHTONG) loadLichTong();
+        });
+
         contentPanel.add(tabs, BorderLayout.CENTER);
     }
 
-    // ── Stat bar ─────────────────────────────────────────────────────────────
+    // ── Stat bar ──────────────────────────────────────────────────────────────
 
     private JPanel buildStatBar() {
-        JPanel bar = new JPanel(new GridLayout(1,4,12,0));
+        JPanel bar = new JPanel(new GridLayout(1, 3, 12, 0));
         bar.setOpaque(false);
-        bar.setBorder(new EmptyBorder(0,0,14,0));
-        bar.add(statCard("👥  Nhân viên hoạt động", "24", UITheme.BLUE));
-        bar.add(statCard("✅  Đã chấm công hôm nay", "18", UITheme.GREEN));
-        bar.add(statCard("🔄  Yêu cầu chờ duyệt",   "3",  UITheme.AMBER));
-        bar.add(statCard("❌  Chưa chấm công",       "6",  UITheme.RED));
+        bar.setBorder(new EmptyBorder(0, 0, 14, 0));
+        // Placeholder – loadStatBar() sẽ điền số thật
+        bar.add(statCard("👥  Nhân viên", "—", UITheme.BLUE));
+        bar.add(statCard("🔄  Chờ duyệt đổi ca", "—", UITheme.AMBER));
+        bar.add(statCard("📅  Ca hôm nay", "—", UITheme.GREEN));
         return bar;
     }
 
@@ -85,367 +127,480 @@ public class ManagerFrame extends BaseFrame {
         JPanel card = createCard(null);
         card.setLayout(new BorderLayout());
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0,4,0,0,color),
-                new EmptyBorder(12,14,12,14)));
+                BorderFactory.createMatteBorder(0, 4, 0, 0, color),
+                new EmptyBorder(12, 14, 12, 14)));
         JLabel lVal = new JLabel(value);
-        lVal.setFont(new Font("Consolas",Font.BOLD,28));
-        lVal.setForeground(color);
+        lVal.setFont(new Font("Consolas", Font.BOLD, 28)); lVal.setForeground(color);
         JLabel lLbl = new JLabel("<html>" + label + "</html>");
-        lLbl.setFont(UITheme.FONT_SMALL);
-        lLbl.setForeground(UITheme.MUTED);
+        lLbl.setFont(UITheme.FONT_SMALL); lLbl.setForeground(UITheme.MUTED);
         card.add(lVal, BorderLayout.CENTER);
         card.add(lLbl, BorderLayout.SOUTH);
         return card;
     }
 
-    // ── Tab Xếp lịch ────────────────────────────────────────────────────────
+    /** Cập nhật số trên stat bar từ dữ liệu thật. */
+    private void loadStatBar() {
+        new SwingWorker<int[], Void>() {
+            @Override protected int[] doInBackground() {
+                int tongNV      = service.getDanhSachNV().size();
+                int choDuyet    = service.getYeuCauChoDuyet().size();
+
+                // Đếm ca hôm nay
+                Calendar now = Calendar.getInstance();
+                int lichHomNay = service.getLichTheoThang(
+                        now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1).size();
+
+                return new int[]{ tongNV, choDuyet, lichHomNay };
+            }
+            @Override protected void done() {
+                try {
+                    int[] nums = get();
+                    updateStatCard(0, String.valueOf(nums[0]));
+                    updateStatCard(1, String.valueOf(nums[1]));
+                    updateStatCard(2, String.valueOf(nums[2]));
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+    }
+
+    private void updateStatCard(int idx, String value) {
+        // Lấy JLabel số trong card (component đầu tiên trong BorderLayout.CENTER)
+        JPanel card = (JPanel) statBar.getComponent(idx);
+        for (Component c : card.getComponents()) {
+            if (c instanceof JLabel && ((JLabel)c).getFont().getName().equals("Consolas")) {
+                ((JLabel)c).setText(value);
+                break;
+            }
+        }
+    }
+
+    // ── Tab 1: Xếp lịch (F3.1) ────────────────────────────────────────────────
 
     private JPanel buildXepLichTab() {
-        JPanel panel = new JPanel(new GridLayout(1,2,14,0));
+        JPanel panel = new JPanel(new GridLayout(1, 2, 14, 0));
         panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(12,0,0,0));
+        panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // Form xếp lịch
+        // ── Form xếp lịch ──────────────────────────────────────────────────────
         JPanel formCard = createCard("📅  Xếp lịch cho nhân viên");
-        JPanel body = new JPanel();
-        body.setOpaque(false);
+        JPanel body = new JPanel(); body.setOpaque(false);
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
+        // Chọn ngày
         SpinnerDateModel dateModel = new SpinnerDateModel();
-        JSpinner dateSpinner = new JSpinner(dateModel);
-        dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner,"dd/MM/yyyy"));
-        dateSpinner.setMaximumSize(new Dimension(Integer.MAX_VALUE,32));
-        dateSpinner.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JSpinner spNgay = new JSpinner(dateModel);
+        spNgay.setEditor(new JSpinner.DateEditor(spNgay, "dd/MM/yyyy"));
+        spNgay.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        spNgay.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        String[] caItems = {"Ca sáng (07:00–12:00)","Ca chiều (13:00–18:00)","Ca tối (18:00–22:00)"};
+        // Chọn ca (sẽ load từ CaLamViecDAO khi nhóm Khởi xong; tạm hardcode)
+        String[] caItems = {"CA01 – Ca sáng (07:00–12:00)", "CA02 – Ca chiều (13:00–18:00)", "CA03 – Ca tối (18:00–22:00)"};
         JComboBox<String> cboCa = new JComboBox<>(caItems);
         cboCa.setFont(UITheme.FONT_BODY);
-        cboCa.setMaximumSize(new Dimension(Integer.MAX_VALUE,32));
+        cboCa.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         cboCa.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Danh sách NV checkbox
-        JPanel nvPanel = new JPanel();
-        nvPanel.setLayout(new BoxLayout(nvPanel,BoxLayout.Y_AXIS));
-        nvPanel.setBackground(new Color(248,250,252));
-        nvPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UITheme.BORDER),
-                new EmptyBorder(8,10,8,10)));
-
-        String[][] nvList = {{"NV001","Nguyễn Huy"},{"NV002","Trần Kiệt"},
-                             {"NV003","Lê Khởi"},{"NV004","Phạm Minh"},{"NV005","Hoàng An"}};
-        java.util.List<JCheckBox> checkBoxes = new java.util.ArrayList<>();
-        for (String[] nv : nvList) {
-            JCheckBox cb = new JCheckBox(nv[0] + "  –  " + nv[1]);
-            cb.setFont(UITheme.FONT_BODY);
-            cb.setOpaque(false);
-            cb.setAlignmentX(Component.LEFT_ALIGNMENT);
-            checkBoxes.add(cb);
-            nvPanel.add(cb);
-            nvPanel.add(Box.createVerticalStrut(4));
-        }
-
-        JScrollPane scrollNV = new JScrollPane(nvPanel);
-        scrollNV.setMaximumSize(new Dimension(Integer.MAX_VALUE,130));
+        // Danh sách NV checkbox (load từ DB)
+        JPanel nvListPanel = new JPanel(); nvListPanel.setOpaque(false);
+        nvListPanel.setLayout(new BoxLayout(nvListPanel, BoxLayout.Y_AXIS));
+        JScrollPane scrollNV = new JScrollPane(nvListPanel);
+        scrollNV.setPreferredSize(new Dimension(0, 130));
+        scrollNV.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
         scrollNV.setAlignmentX(Component.LEFT_ALIGNMENT);
-        scrollNV.setBorder(null);
+        scrollNV.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
 
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0));
-        btnRow.setOpaque(false);
-        btnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE,36));
-        btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JButton btnAll  = actionBtn("Chọn tất cả", new Color(71,85,105));
-        JButton btnNone = actionBtn("Bỏ chọn",     new Color(100,116,135));
-        btnAll.addActionListener(e  -> checkBoxes.forEach(c -> c.setSelected(true)));
-        btnNone.addActionListener(e -> checkBoxes.forEach(c -> c.setSelected(false)));
-        btnRow.add(btnAll); btnRow.add(btnNone);
+        // Tải NV vào list checkbox
+        new SwingWorker<List<NhanVien>, Void>() {
+            @Override protected List<NhanVien> doInBackground() { return service.getDanhSachNV(); }
+            @Override protected void done() {
+                try {
+                    danhSachNV = get();
+                    checkBoxesNV.clear();
+                    nvListPanel.removeAll();
+                    for (NhanVien nv : danhSachNV) {
+                        JCheckBox cb = new JCheckBox(nv.getMaNV() + "  –  " + nv.getHoTen());
+                        cb.setFont(UITheme.FONT_BODY); cb.setOpaque(false);
+                        cb.setAlignmentX(Component.LEFT_ALIGNMENT);
+                        checkBoxesNV.add(cb);
+                        nvListPanel.add(cb);
+                        nvListPanel.add(Box.createVerticalStrut(4));
+                    }
+                    nvListPanel.revalidate();
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
 
+        // Nút Chọn tất cả / Bỏ chọn
+        JPanel btnChon = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); btnChon.setOpaque(false);
+        btnChon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        btnChon.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JButton btnAll  = actionBtn("Chọn tất cả",  new Color(71, 85, 105));
+        JButton btnNone = actionBtn("Bỏ chọn",       new Color(100, 116, 135));
+        btnAll.addActionListener(e  -> checkBoxesNV.forEach(c -> c.setSelected(true)));
+        btnNone.addActionListener(e -> checkBoxesNV.forEach(c -> c.setSelected(false)));
+        btnChon.add(btnAll); btnChon.add(btnNone);
+
+        // Nút Lưu lịch
         JButton btnLuu = actionBtn("💾  Lưu lịch", UITheme.GREEN);
         btnLuu.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnLuu.addActionListener(e -> {
-            long count = checkBoxes.stream().filter(JCheckBox::isSelected).count();
-            if (count == 0) { showError("Vui lòng chọn ít nhất 1 nhân viên."); return; }
-            showSuccess("Đã xếp lịch thành công cho " + count + " nhân viên!");
-            checkBoxes.forEach(c -> c.setSelected(false));
+            // Lấy danh sách NV được tick
+            List<String> dsMaNV = new ArrayList<>();
+            for (int i = 0; i < checkBoxesNV.size(); i++) {
+                if (checkBoxesNV.get(i).isSelected()) {
+                    dsMaNV.add(danhSachNV.get(i).getMaNV());
+                }
+            }
+            if (dsMaNV.isEmpty()) { showError("Vui lòng chọn ít nhất 1 nhân viên."); return; }
+
+            // Lấy maCa từ combobox (CA01 / CA02 / CA03)
+            String maCa = "CA0" + (cboCa.getSelectedIndex() + 1);
+            java.util.Date ngay = (java.util.Date) spNgay.getValue();
+
+            List<String> trungCa = new ArrayList<>();
+            int soOK = service.xepLich(dsMaNV, maCa, ngay, trungCa);
+
+            String msg = "Đã xếp lịch thành công cho " + soOK + " nhân viên.";
+            if (!trungCa.isEmpty()) {
+                msg += "\n\n⚠️ Bị trùng ca (bỏ qua): " + String.join(", ", trungCa);
+            }
+
+            if (soOK > 0) { showSuccess(msg); loadLichDaXep(); loadStatBar(); }
+            else showError("Tất cả NV đã có ca trong ngày này.");
+
+            checkBoxesNV.forEach(c -> c.setSelected(false));
         });
 
-        body.add(flabel("Ngày làm việc *")); body.add(Box.createVerticalStrut(4));
-        body.add(dateSpinner); body.add(Box.createVerticalStrut(10));
-        body.add(flabel("Ca làm việc *")); body.add(Box.createVerticalStrut(4));
-        body.add(cboCa); body.add(Box.createVerticalStrut(10));
-        body.add(flabel("Nhân viên *")); body.add(Box.createVerticalStrut(4));
-        body.add(btnRow); body.add(Box.createVerticalStrut(4));
-        body.add(scrollNV); body.add(Box.createVerticalStrut(12));
+        body.add(fLabel("Ngày làm việc *"));      body.add(Box.createVerticalStrut(4));
+        body.add(spNgay);                         body.add(Box.createVerticalStrut(10));
+        body.add(fLabel("Ca làm việc *"));        body.add(Box.createVerticalStrut(4));
+        body.add(cboCa);                          body.add(Box.createVerticalStrut(10));
+        body.add(fLabel("Nhân viên *"));          body.add(Box.createVerticalStrut(4));
+        body.add(btnChon);                        body.add(Box.createVerticalStrut(4));
+        body.add(scrollNV);                       body.add(Box.createVerticalStrut(12));
         body.add(btnLuu);
         formCard.add(body, BorderLayout.CENTER);
 
-        // Lịch đã xếp hôm nay
-        JPanel rightCard = createCard("📋  Lịch đã xếp hôm nay");
-        String[] cols = {"Mã lịch","Nhân viên","Ca","Ngày","Trạng thái"};
+        // ── Bảng lịch đã xếp ──────────────────────────────────────────────────
+        JPanel rightCard = createCard("📋  Lịch đã xếp tháng này");
+
+        JPanel rightHeader = new JPanel(new BorderLayout()); rightHeader.setOpaque(false);
+        JButton btnRefresh = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
+        btnRefresh.addActionListener(e -> loadLichDaXep());
+        rightHeader.add(btnRefresh, BorderLayout.EAST);
+        rightCard.add(rightHeader, BorderLayout.NORTH);
+
+        String[] cols = {"Mã lịch", "Mã NV", "Mã ca", "Ngày", "Trạng thái"};
         JTable tbl = createTable(cols);
-        DefaultTableModel mdl = (DefaultTableModel)tbl.getModel();
-        mdl.addRow(new Object[]{"L001","Nguyễn Huy","Ca sáng","06/06","Đã phân"});
-        mdl.addRow(new Object[]{"L002","Trần Kiệt","Ca chiều","06/06","Đã phân"});
-        mdl.addRow(new Object[]{"L003","Lê Khởi","Ca tối","06/06","Đã phân"});
-        JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
-        rightCard.add(scroll, BorderLayout.CENTER);
+        lichDaXepModel = (DefaultTableModel) tbl.getModel();
+        JScrollPane sp = new JScrollPane(tbl);
+        sp.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
+        rightCard.add(sp, BorderLayout.CENTER);
 
         panel.add(formCard); panel.add(rightCard);
         return panel;
     }
 
-    // ── Tab Duyệt đổi ca ─────────────────────────────────────────────────────
+    /** Tải lịch đã xếp tháng hiện tại vào bảng bên phải. */
+    private void loadLichDaXep() {
+        Calendar now = Calendar.getInstance();
+        new SwingWorker<List<LichPhanCa>, Void>() {
+            @Override protected List<LichPhanCa> doInBackground() {
+                return service.getLichTheoThang(now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1);
+            }
+            @Override protected void done() {
+                try {
+                    lichDaXepModel.setRowCount(0);
+                    SimpleDateFormat fmt = new SimpleDateFormat("dd/MM/yyyy");
+                    for (LichPhanCa l : get()) {
+                        lichDaXepModel.addRow(new Object[]{
+                                l.getMaLich(), l.getMaNV(), l.getMaCa(),
+                                fmt.format(l.getNgayLamViec()),
+                                StaffFrame.trangThaiLabel(l.getTrangThai())
+                        });
+                    }
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+    }
 
-    private JPanel buildDuyetDoiCaTab() {
-        JPanel panel = new JPanel(new BorderLayout(0,12));
+    // ── Tab 2: Duyệt đổi ca (F3.2 + F3.3) ───────────────────────────────────
+
+    private JPanel buildDuyetTab() {
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(12,0,0,0));
+        panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        JPanel topRow = new JPanel(new BorderLayout());
-        topRow.setOpaque(false);
-        JLabel title = new JLabel("✅  Yêu cầu đổi ca đang chờ duyệt");
-        title.setFont(UITheme.FONT_HEAD);
-        JButton btnRefresh = actionBtn("🔄  Làm mới", new Color(71,85,105));
-        topRow.add(title, BorderLayout.WEST);
-        topRow.add(btnRefresh, BorderLayout.EAST);
-        panel.add(topRow, BorderLayout.NORTH);
+        // Tiêu đề + nút làm mới
+        JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
+        JLabel title = new JLabel("✅  Yêu cầu đổi ca đang chờ duyệt"); title.setFont(UITheme.FONT_HEAD);
+        JButton btnLamMoi = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
+        btnLamMoi.addActionListener(e -> loadYeuCauChoDuyet());
+        header.add(title, BorderLayout.WEST); header.add(btnLamMoi, BorderLayout.EAST);
+        panel.add(header, BorderLayout.NORTH);
 
-        String[] cols = {"Mã YC","Người gửi","Ca gốc","Ngày ca","Đổi cùng","Lý do","Ngày tạo"};
+        // Bảng yêu cầu
+        String[] cols = {"Mã YC", "Người gửi", "Mã ca", "NV đổi cùng", "Lý do", "Ngày tạo"};
         JTable tbl = createTable(cols);
-        DefaultTableModel mdl = (DefaultTableModel)tbl.getModel();
-        mdl.addRow(new Object[]{"YC003","Nguyễn Huy","Ca chiều","07/06","Trần Kiệt","Việc gia đình","05/06 10:00"});
-        mdl.addRow(new Object[]{"YC004","Lê Khởi","Ca sáng","08/06","Phạm Minh","Khám sức khỏe","05/06 14:20"});
-        mdl.addRow(new Object[]{"YC005","Phạm Minh","Ca tối","09/06","—","Bận đột xuất","05/06 20:15"});
+        duyetModel = (DefaultTableModel) tbl.getModel();
+        JScrollPane sp = new JScrollPane(tbl);
+        sp.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
+        panel.add(sp, BorderLayout.CENTER);
 
-        JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
-        panel.add(scroll, BorderLayout.CENTER);
-
-        // Action bar
-        JPanel actRow = new JPanel(new FlowLayout(FlowLayout.LEFT,10,5));
-        actRow.setOpaque(false);
-        JButton btnDuyet  = actionBtn("✅  Duyệt",    UITheme.GREEN);
-        JButton btnTuChoi = actionBtn("❌  Từ chối",  UITheme.RED);
-        JLabel  hint      = new JLabel("← Chọn một hàng rồi nhấn nút");
+        // Nút Duyệt / Từ chối
+        JPanel actRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5)); actRow.setOpaque(false);
+        JButton btnDuyet  = actionBtn("✅  Duyệt",   UITheme.GREEN);
+        JButton btnTuChoi = actionBtn("❌  Từ chối", UITheme.RED);
+        JLabel hint = new JLabel("← Chọn một hàng rồi nhấn nút");
         hint.setFont(UITheme.FONT_SMALL); hint.setForeground(UITheme.MUTED);
 
         btnDuyet.addActionListener(e -> {
             int row = tbl.getSelectedRow();
-            if (row < 0) { showError("Vui lòng chọn một yêu cầu trong bảng."); return; }
-            int r = JOptionPane.showConfirmDialog(this,
-                    "Duyệt yêu cầu: " + mdl.getValueAt(row,0) + " — " + mdl.getValueAt(row,1) + "?",
-                    "Xác nhận duyệt", JOptionPane.YES_NO_OPTION);
-            if (r == JOptionPane.YES_OPTION) { mdl.removeRow(row); showSuccess("Đã duyệt yêu cầu. Lịch phân ca đã cập nhật."); }
+            if (row < 0) { showError("Vui lòng chọn một yêu cầu."); return; }
+            YeuCauDoiCa yc = dsYeuCau.get(row);
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Duyệt yêu cầu " + yc.getMaYeuCau() + "?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) return;
+
+            String err = service.duyetYeuCau(yc);
+            if (err == null) { showSuccess("Đã duyệt. Lịch phân ca đã cập nhật."); loadYeuCauChoDuyet(); loadStatBar(); }
+            else showError(err);
         });
+
         btnTuChoi.addActionListener(e -> {
             int row = tbl.getSelectedRow();
-            if (row < 0) { showError("Vui lòng chọn một yêu cầu trong bảng."); return; }
-            int r = JOptionPane.showConfirmDialog(this,
-                    "Từ chối yêu cầu: " + mdl.getValueAt(row,0) + "?",
-                    "Xác nhận từ chối", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-            if (r == JOptionPane.YES_OPTION) { mdl.removeRow(row); showSuccess("Đã từ chối yêu cầu."); }
+            if (row < 0) { showError("Vui lòng chọn một yêu cầu."); return; }
+            YeuCauDoiCa yc = dsYeuCau.get(row);
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Từ chối yêu cầu " + yc.getMaYeuCau() + "?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) return;
+
+            String err = service.tuChoiYeuCau(yc);
+            if (err == null) { showSuccess("Đã từ chối yêu cầu."); loadYeuCauChoDuyet(); loadStatBar(); }
+            else showError(err);
         });
+
         actRow.add(btnDuyet); actRow.add(btnTuChoi); actRow.add(hint);
         panel.add(actRow, BorderLayout.SOUTH);
 
         return panel;
     }
 
-    // ── Tab Lịch tổng ────────────────────────────────────────────────────────
+    /** Tải danh sách yêu cầu chờ duyệt. */
+    private void loadYeuCauChoDuyet() {
+        new SwingWorker<List<YeuCauDoiCa>, Void>() {
+            @Override protected List<YeuCauDoiCa> doInBackground() {
+                return service.getYeuCauChoDuyet();
+            }
+            @Override protected void done() {
+                try {
+                    dsYeuCau = get();
+                    duyetModel.setRowCount(0);
+                    SimpleDateFormat fmt = new SimpleDateFormat("dd/MM HH:mm");
+                    for (YeuCauDoiCa yc : dsYeuCau) {
+                        duyetModel.addRow(new Object[]{
+                                yc.getMaYeuCau(),
+                                yc.getMaLichGoc(),  // Khởi join thêm tên NV khi DAO đủ
+                                yc.getMaLichGoc(),
+                                yc.getMaNVTarget() != null ? yc.getMaNVTarget() : "—",
+                                yc.getLyDo(),
+                                yc.getNgayTao() != null ? fmt.format(yc.getNgayTao()) : "—"
+                        });
+                    }
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+    }
+
+    // ── Tab 3: Lịch tổng ──────────────────────────────────────────────────────
 
     private JPanel buildLichTongTab() {
-        JPanel panel = new JPanel(new BorderLayout(0,12));
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(12,0,0,0));
+        panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // Nav tuần
-        JPanel navRow = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0));
-        navRow.setOpaque(false);
-        JButton btnPrev  = actionBtn("◀  Tuần trước", UITheme.BLUE);
-        JButton btnNext  = actionBtn("Tuần sau  ▶",   UITheme.BLUE);
-        JButton btnToday = actionBtn("Tuần này",       new Color(71,85,105));
-        JLabel lblWeek   = new JLabel("Tuần 23 — 02/06 đến 08/06/2025");
-        lblWeek.setFont(new Font("Segoe UI",Font.BOLD,14));
-        navRow.add(btnPrev); navRow.add(btnToday); navRow.add(btnNext);
-        navRow.add(Box.createHorizontalStrut(16)); navRow.add(lblWeek);
-        panel.add(navRow, BorderLayout.NORTH);
+        // Điều hướng tuần
+        JPanel nav = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); nav.setOpaque(false);
+        JButton prev  = actionBtn("◀  Tuần trước", UITheme.BLUE);
+        JButton next  = actionBtn("Tuần sau  ▶",   UITheme.BLUE);
+        JButton today = actionBtn("Tuần này",       new Color(71, 85, 105));
+        lblTuan = new JLabel(); lblTuan.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        nav.add(prev); nav.add(today); nav.add(next);
+        nav.add(Box.createHorizontalStrut(16)); nav.add(lblTuan);
+        panel.add(nav, BorderLayout.NORTH);
 
-        // Lưới tuần
-        String[] nvNames = {"Nguyễn Huy","Trần Kiệt","Lê Khởi","Phạm Minh","Hoàng An"};
-        String[] days = {"T2\n02/06","T3\n03/06","T4\n04/06","T5\n05/06","T6\n06/06","T7\n07/06","CN\n08/06"};
-        // Data giả lập
-        String[][] data = {
-            {"CA_SANG","","CA_CHIEU","CA_SANG","CA_SANG","",""},
-            {"CA_CHIEU","CA_SANG","","CA_CHIEU","CA_CHIEU","CA_SANG",""},
-            {"","CA_TOI","CA_SANG","","CA_TOI","","CA_SANG"},
-            {"CA_SANG","CA_CHIEU","CA_SANG","CA_SANG","","CA_CHIEU",""},
-            {"CA_TOI","","","CA_TOI","CA_SANG","","CA_CHIEU"}
-        };
+        // Khởi tạo tuần hiện tại (từ Thứ 2)
+        tuanBatDau = getMondayOfCurrentWeek();
 
-        JPanel gridCard = new JPanel(new BorderLayout());
-        gridCard.setBackground(UITheme.BG_CARD);
-        gridCard.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
+        prev.addActionListener(e  -> { tuanBatDau = addDays(tuanBatDau, -7); loadLichTong(); });
+        next.addActionListener(e  -> { tuanBatDau = addDays(tuanBatDau, +7); loadLichTong(); });
+        today.addActionListener(e -> { tuanBatDau = getMondayOfCurrentWeek(); loadLichTong(); });
 
-        // Bảng
-        int rows = nvNames.length;
-        int cols = days.length + 1; // +1 cột tên NV
-        JPanel grid = new JPanel(new GridLayout(rows+1, cols, 1, 1));
+        // Grid lịch (sẽ được build lại bởi buildLichTongGrid)
+        lichTongGrid = new JPanel(new BorderLayout());
+        lichTongGrid.setBackground(UITheme.BG_CARD);
+        lichTongGrid.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
+
+        JScrollPane sp = new JScrollPane(lichTongGrid); sp.setBorder(null);
+        panel.add(sp, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    /** Tải lịch tổng tuần hiện tại. */
+    private void loadLichTong() {
+        Date denNgay = addDays(tuanBatDau, 6);
+
+        SimpleDateFormat fmt = new SimpleDateFormat("dd/MM");
+        lblTuan.setText("Tuần: " + fmt.format(tuanBatDau) + " – " + fmt.format(denNgay));
+
+        new SwingWorker<Object[], Void>() {
+            @Override protected Object[] doInBackground() {
+                List<NhanVien>  nvs  = service.getDanhSachNV();
+                List<LichPhanCa> lich = service.getLichTrongTuan(
+                        new java.sql.Date(tuanBatDau.getTime()),
+                        new java.sql.Date(denNgay.getTime()));
+                return new Object[]{ nvs, lich };
+            }
+            @Override protected void done() {
+                try {
+                    Object[] data = get();
+                    buildLichTongGrid((List<NhanVien>) data[0], (List<LichPhanCa>) data[1]);
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+    }
+
+    /** Vẽ grid lịch tổng (NV × 7 ngày). */
+    private void buildLichTongGrid(List<NhanVien> nvs, List<LichPhanCa> lichs) {
+        lichTongGrid.removeAll();
+
+        String[] tenNgay = {"T2","T3","T4","T5","T6","T7","CN"};
+        SimpleDateFormat fmtNgay = new SimpleDateFormat("dd/MM");
+
+        int cols = 8;  // 1 cột tên NV + 7 ngày
+        JPanel grid = new JPanel(new GridLayout(nvs.size() + 1, cols, 1, 1));
         grid.setBackground(UITheme.BORDER);
 
         // Header
-        JLabel hdrNV = headerCell("Nhân viên", UITheme.NAVY2, Color.WHITE);
-        grid.add(hdrNV);
-        for (String d : days) {
-            boolean isToday = d.contains("06/06");
-            Color bg = isToday ? UITheme.NAVY : UITheme.NAVY2;
-            grid.add(headerCell("<html><center>" + d.replace("\n","<br>") + "</center></html>", bg, Color.WHITE));
+        grid.add(headerCell("Nhân viên"));
+        for (int i = 0; i < 7; i++) {
+            Date ngay = addDays(tuanBatDau, i);
+            grid.add(headerCell(tenNgay[i] + "\n" + fmtNgay.format(ngay)));
         }
 
-        // Hàng NV
-        for (int i = 0; i < nvNames.length; i++) {
-            JLabel nvLbl = new JLabel("  " + nvNames[i]);
-            nvLbl.setFont(UITheme.FONT_SMALL);
-            nvLbl.setForeground(UITheme.TEXT2);
-            nvLbl.setBackground(i%2==0 ? Color.WHITE : new Color(248,250,252));
-            nvLbl.setOpaque(true);
-            nvLbl.setPreferredSize(new Dimension(120,44));
-            grid.add(nvLbl);
+        // Map: (maNV + ngày) → maCa
+        Map<String, String> map = new HashMap<>();
+        for (LichPhanCa l : lichs) {
+            String key = l.getMaNV() + "_" + l.getNgayLamViec().toString();
+            map.put(key, l.getMaCa());
+        }
 
-            for (int d = 0; d < days.length; d++) {
-                String shift = data[i][d];
+        Calendar todayCal = Calendar.getInstance();
+        SimpleDateFormat fmtKey = new SimpleDateFormat("yyyy-MM-dd");
+
+        // Hàng mỗi NV
+        for (int r = 0; r < nvs.size(); r++) {
+            NhanVien nv = nvs.get(r);
+            Color rowBg = r % 2 == 0 ? Color.WHITE : new Color(248, 250, 252);
+
+            JLabel lblNV = new JLabel("  " + nv.getHoTen());
+            lblNV.setFont(UITheme.FONT_SMALL); lblNV.setForeground(UITheme.TEXT2);
+            lblNV.setBackground(rowBg); lblNV.setOpaque(true);
+            grid.add(lblNV);
+
+            for (int d = 0; d < 7; d++) {
+                Date ngay = addDays(tuanBatDau, d);
+                String key = nv.getMaNV() + "_" + fmtKey.format(ngay);
+                String maCa = map.get(key);
+
+                boolean isToday = fmtKey.format(ngay).equals(fmtKey.format(todayCal.getTime()));
                 JPanel cell = new JPanel(new GridBagLayout());
-                boolean isToday = days[d].contains("06/06");
-                cell.setBackground(isToday
-                        ? new Color(239,246,255)
-                        : (i%2==0 ? Color.WHITE : new Color(248,250,252)));
-                cell.setPreferredSize(new Dimension(80,44));
-                if (!shift.isEmpty()) {
-                    JLabel lbl = shiftLabel(shift);
-                    cell.add(lbl);
+                cell.setBackground(isToday ? new Color(239, 246, 255) : rowBg);
+                cell.setPreferredSize(new Dimension(80, 44));
+
+                if (maCa != null) {
+                    cell.add(caChip(maCa));
                 }
                 grid.add(cell);
             }
         }
-        gridCard.add(grid, BorderLayout.CENTER);
+
+        lichTongGrid.removeAll();
+        lichTongGrid.add(grid, BorderLayout.CENTER);
 
         // Chú thích
-        JPanel legend = new JPanel(new FlowLayout(FlowLayout.LEFT,14,4));
-        legend.setOpaque(false);
-        legend.add(legendItem(UITheme.BLUE_PALE,  new Color(30,64,175),  "Ca sáng (07:00–12:00)"));
-        legend.add(legendItem(UITheme.AMBER_PALE, new Color(120,53,15),  "Ca chiều (13:00–18:00)"));
-        legend.add(legendItem(new Color(237,233,254), new Color(76,29,149), "Ca tối (18:00–22:00)"));
-        gridCard.add(legend, BorderLayout.SOUTH);
+        JPanel legend = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 4)); legend.setOpaque(false);
+        legend.add(dotLegend(UITheme.BLUE_PALE,            new Color(30, 64, 175),  "Ca sáng"));
+        legend.add(dotLegend(UITheme.AMBER_PALE,           new Color(120, 53, 15),  "Ca chiều"));
+        legend.add(dotLegend(new Color(237, 233, 254),     new Color(76, 29, 149),  "Ca tối"));
+        lichTongGrid.add(legend, BorderLayout.SOUTH);
 
-        JScrollPane scroll = new JScrollPane(gridCard);
-        scroll.setBorder(null);
-        panel.add(scroll, BorderLayout.CENTER);
-        return panel;
+        lichTongGrid.revalidate(); lichTongGrid.repaint();
     }
 
-    // ── Tab Xuất báo cáo ─────────────────────────────────────────────────────
-
-    private JPanel buildBaoCaoTab() {
-        JPanel panel = new JPanel(new GridLayout(1,2,14,0));
-        panel.setOpaque(false);
-        panel.setBorder(new EmptyBorder(12,0,0,0));
-
-        // Form
-        JPanel formCard = createCard("📄  Xuất báo cáo chấm công");
-        JPanel body = new JPanel();
-        body.setOpaque(false);
-        body.setLayout(new BoxLayout(body,BoxLayout.Y_AXIS));
-
-        String[] months = {"Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6",
-                           "Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"};
-        JComboBox<String> cboThang = new JComboBox<>(months);
-        cboThang.setSelectedIndex(5);
-        cboThang.setFont(UITheme.FONT_BODY);
-        cboThang.setMaximumSize(new Dimension(Integer.MAX_VALUE,32));
-        cboThang.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        SpinnerNumberModel yearModel = new SpinnerNumberModel(2025,2020,2030,1);
-        JSpinner spNam = new JSpinner(yearModel);
-        spNam.setMaximumSize(new Dimension(Integer.MAX_VALUE,32));
-        spNam.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JButton btnXuat = actionBtn("📊  Xuất file Excel (.xlsx)", UITheme.GREEN);
-        btnXuat.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnXuat.addActionListener(e -> {
-            JFileChooser fc = new JFileChooser();
-            fc.setSelectedFile(new java.io.File("BaoCaoChamCong_T6_2025.xlsx"));
-            if (fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                showSuccess("Xuất báo cáo thành công!\nFile: " + fc.getSelectedFile().getAbsolutePath());
-            }
-        });
-
-        body.add(flabel("Chọn tháng *")); body.add(Box.createVerticalStrut(4));
-        body.add(cboThang); body.add(Box.createVerticalStrut(10));
-        body.add(flabel("Năm *")); body.add(Box.createVerticalStrut(4));
-        body.add(spNam); body.add(Box.createVerticalStrut(14));
-        body.add(btnXuat);
-        formCard.add(body, BorderLayout.CENTER);
-
-        // Preview bảng tổng hợp
-        JPanel previewCard = createCard("📋  Tổng hợp tháng 6/2025");
-        String[] cols = {"Nhân viên","Tổng ca","Tổng giờ","Đúng giờ","Đi trễ","Về sớm"};
-        JTable tbl = createTable(cols);
-        DefaultTableModel mdl = (DefaultTableModel)tbl.getModel();
-        mdl.addRow(new Object[]{"Nguyễn Huy","18","90h","16","2","0"});
-        mdl.addRow(new Object[]{"Trần Kiệt","20","100h","20","0","0"});
-        mdl.addRow(new Object[]{"Lê Khởi","15","75h","14","1","0"});
-        mdl.addRow(new Object[]{"Phạm Minh","12","60h","11","1","0"});
-        JScrollPane scroll = new JScrollPane(tbl);
-        scroll.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
-        previewCard.add(scroll, BorderLayout.CENTER);
-
-        panel.add(formCard); panel.add(previewCard);
-        return panel;
+    private JLabel headerCell(String text) {
+        JLabel l = new JLabel("<html><center>" + text.replace("\n", "<br>") + "</center></html>",
+                SwingConstants.CENTER);
+        l.setFont(UITheme.FONT_BOLD); l.setBackground(UITheme.NAVY2); l.setForeground(Color.WHITE);
+        l.setOpaque(true); l.setPreferredSize(new Dimension(80, 44));
+        return l;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private JLabel flabel(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI",Font.BOLD,11));
-        lbl.setForeground(UITheme.TEXT2);
-        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return lbl;
-    }
-
-    private JLabel headerCell(String text, Color bg, Color fg) {
-        JLabel lbl = new JLabel(text, SwingConstants.CENTER);
-        lbl.setFont(UITheme.FONT_BOLD);
-        lbl.setBackground(bg);
-        lbl.setForeground(fg);
-        lbl.setOpaque(true);
-        lbl.setPreferredSize(new Dimension(80,40));
-        return lbl;
-    }
-
-    private JLabel shiftLabel(String type) {
+    /** Chip màu hiển thị tên ca trong ô lịch. */
+    private JLabel caChip(String maCa) {
         String text; Color bg; Color fg;
-        switch (type) {
-            case "CA_SANG":  text="Sáng";  bg=UITheme.BLUE_PALE; fg=new Color(30,64,175); break;
-            case "CA_CHIEU": text="Chiều"; bg=UITheme.AMBER_PALE;fg=new Color(120,53,15); break;
-            case "CA_TOI":   text="Tối";   bg=new Color(237,233,254);fg=new Color(76,29,149); break;
-            default:         return new JLabel();
-        }
-        JLabel lbl = new JLabel(text, SwingConstants.CENTER);
-        lbl.setFont(new Font("Segoe UI",Font.BOLD,10));
-        lbl.setBackground(bg); lbl.setForeground(fg); lbl.setOpaque(true);
-        lbl.setBorder(new EmptyBorder(3,8,3,8));
-        return lbl;
+        if ("CA01".equals(maCa))      { text = "Sáng";  bg = UITheme.BLUE_PALE;         fg = new Color(30, 64, 175);  }
+        else if ("CA02".equals(maCa)) { text = "Chiều"; bg = UITheme.AMBER_PALE;        fg = new Color(120, 53, 15);  }
+        else if ("CA03".equals(maCa)) { text = "Tối";   bg = new Color(237, 233, 254);  fg = new Color(76, 29, 149);  }
+        else                          { text = maCa;    bg = UITheme.BLUE_PALE;         fg = UITheme.NAVY; }
+
+        JLabel l = new JLabel(text, SwingConstants.CENTER);
+        l.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        l.setBackground(bg); l.setForeground(fg); l.setOpaque(true);
+        l.setBorder(new EmptyBorder(3, 8, 3, 8));
+        return l;
     }
 
-    private JPanel legendItem(Color bg, Color fg, String label) {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT,5,0));
-        p.setOpaque(false);
-        JLabel box = new JLabel("   ");
-        box.setBackground(bg); box.setOpaque(true);
+    // ── Refresh ───────────────────────────────────────────────────────────────
+
+    private void refreshTab() {
+        int idx = tabs.getSelectedIndex();
+        if (idx == TAB_XEPLICH)  loadLichDaXep();
+        if (idx == TAB_DUYET)    loadYeuCauChoDuyet();
+        if (idx == TAB_LICHTONG) loadLichTong();
+        loadStatBar();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Tìm ngày Thứ 2 của tuần hiện tại. */
+    private Date getMondayOfCurrentWeek() {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
+    }
+
+    private Date addDays(Date d, int days) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(d); cal.add(Calendar.DAY_OF_MONTH, days);
+        return cal.getTime();
+    }
+
+    private JLabel fLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("Segoe UI", Font.BOLD, 11)); l.setForeground(UITheme.TEXT2);
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return l;
+    }
+
+    private JPanel dotLegend(Color bg, Color fg, String label) {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); p.setOpaque(false);
+        JLabel box = new JLabel("   "); box.setBackground(bg); box.setOpaque(true);
         box.setBorder(BorderFactory.createLineBorder(bg.darker()));
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(UITheme.FONT_SMALL);
-        lbl.setForeground(fg);
+        JLabel lbl = new JLabel(label); lbl.setFont(UITheme.FONT_SMALL); lbl.setForeground(fg);
         p.add(box); p.add(lbl);
         return p;
     }
