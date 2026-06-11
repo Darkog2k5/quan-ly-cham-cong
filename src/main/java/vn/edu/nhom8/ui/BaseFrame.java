@@ -12,15 +12,55 @@ import java.util.Date;
 
 /**
  * Frame gốc dùng chung cho StaffFrame, ManagerFrame, AdminFrame.
- * Chứa: Topbar (logo + tên NV + nút chuông + avatar) + Clock bar + ContentPanel.
- * Mỗi subclass tự build toolbar và content của mình.
+ *
+ * Layout:
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │  Topbar: Logo | Clock | NV info + Bell + Avatar         │
+ *   ├─────────────────────────────────────────────────────────┤
+ *   │  RoleTabs: [ Nhân viên ] [ Quản lý ] [ Quản trị HT ]  │  ← tab vai trò
+ *   ├─────────────────────────────────────────────────────────┤
+ *   │  Toolbar (thay đổi theo tab đang chọn)                  │
+ *   ├─────────────────────────────────────────────────────────┤
+ *   │  ContentPanel (nội dung tab đang chọn)                  │
+ *   └─────────────────────────────────────────────────────────┘
+ *
+ * Quyền truy cập:
+ *   Staff   → chỉ tab 0 (Nhân viên)
+ *   Manager → tab 0 + 1 (Nhân viên + Quản lý)
+ *   Admin   → tab 0 + 1 + 2
  */
 public abstract class BaseFrame extends JFrame {
 
-    protected JPanel contentPanel;   // subclass đặt nội dung vào đây
-    private   JLabel lblClock;
-    private   Timer  clockTimer;
+    // ── Index các tab vai trò ─────────────────────────────────────────────────
+    public static final int ROLE_TAB_STAFF   = 0;
+    public static final int ROLE_TAB_MANAGER = 1;
+    public static final int ROLE_TAB_ADMIN   = 2;
+
+    /** Tab vai trò cấp cao – subclass KHÔNG được thêm tab vào đây trực tiếp */
+    protected JTabbedPane roleTabs;
+
+    /**
+     * Panel nội dung cho từng tab vai trò.
+     * Index = ROLE_TAB_STAFF / ROLE_TAB_MANAGER / ROLE_TAB_ADMIN
+     */
+    protected JPanel[] roleContentPanels = new JPanel[3];
+
+    /**
+     * Toolbar cho từng tab vai trò – subclass ghi đè buildToolbarForRole(int).
+     * Index = ROLE_TAB_STAFF / ROLE_TAB_MANAGER / ROLE_TAB_ADMIN
+     */
+    private JPanel[] roleToolbars = new JPanel[3];
+
+    /** Panel wrapper chứa toolbar hiện hành (thay đổi khi đổi tab) */
+    private JPanel toolbarWrapper;
+
+    /** Badge chuông thông báo */
     protected JLabel lblBadge;
+
+    private JLabel lblClock;
+    private Timer  clockTimer;
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     public BaseFrame(String title) {
         setTitle("WorkShift Pro — " + title);
@@ -42,30 +82,138 @@ public abstract class BaseFrame extends JFrame {
         // ── Topbar ──────────────────────────────────────────────────────────
         root.add(buildTopBar(), BorderLayout.NORTH);
 
-        // ── Wrapper giữa: toolbar + content ─────────────────────────────────
+        // ── Center: roleTabs + toolbar + content ─────────────────────────────
         JPanel center = new JPanel(new BorderLayout());
         center.setBackground(UITheme.BG_PAGE);
 
-        // Toolbar do subclass cung cấp
-        JPanel toolbar = buildToolbar();
-        if (toolbar != null) center.add(toolbar, BorderLayout.NORTH);
+        // RoleTabs
+        roleTabs = buildRoleTabs();
+        center.add(roleTabs, BorderLayout.NORTH);
 
-        // Content scrollable
-        contentPanel = new JPanel(new BorderLayout());
-        contentPanel.setBackground(UITheme.BG_PAGE);
-        contentPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
+        // Toolbar wrapper – sẽ swap khi đổi tab
+        toolbarWrapper = new JPanel(new BorderLayout());
+        toolbarWrapper.setOpaque(false);
 
-        JScrollPane scroll = new JScrollPane(contentPanel);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.setBackground(UITheme.BG_PAGE);
-        center.add(scroll, BorderLayout.CENTER);
+        // Content scrollable wrapper
+        JPanel contentWrapper = new JPanel(new BorderLayout());
+        contentWrapper.setBackground(UITheme.BG_PAGE);
+        contentWrapper.add(toolbarWrapper, BorderLayout.NORTH);
 
+        // Tạo sẵn 3 roleContentPanels
+        for (int i = 0; i < 3; i++) {
+            roleContentPanels[i] = new JPanel(new BorderLayout());
+            roleContentPanels[i].setBackground(UITheme.BG_PAGE);
+            roleContentPanels[i].setBorder(new EmptyBorder(16, 16, 16, 16));
+        }
+
+        // CardLayout để swap content theo tab
+        CardLayout cardLayout = new CardLayout();
+        JPanel cardHost = new JPanel(cardLayout);
+        cardHost.setBackground(UITheme.BG_PAGE);
+        for (int i = 0; i < 3; i++) {
+            JScrollPane scroll = new JScrollPane(roleContentPanels[i]);
+            scroll.setBorder(null);
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            scroll.setBackground(UITheme.BG_PAGE);
+            cardHost.add(scroll, "role" + i);
+        }
+
+        contentWrapper.add(cardHost, BorderLayout.CENTER);
+        center.add(contentWrapper, BorderLayout.CENTER);
         root.add(center, BorderLayout.CENTER);
         setContentPane(root);
+
+        // Lắng nghe khi đổi tab vai trò
+        roleTabs.addChangeListener(e -> {
+            int idx = roleTabs.getSelectedIndex();
+            // Cập nhật toolbar
+            toolbarWrapper.removeAll();
+            if (roleToolbars[idx] != null) {
+                toolbarWrapper.add(roleToolbars[idx], BorderLayout.CENTER);
+            }
+            toolbarWrapper.revalidate();
+            toolbarWrapper.repaint();
+            // Cập nhật content
+            cardLayout.show(cardHost, "role" + idx);
+            // Hook cho subclass
+            onRoleTabChanged(idx);
+        });
     }
 
-    // ── Topbar ───────────────────────────────────────────────────────────────
+    // ── RoleTabs ──────────────────────────────────────────────────────────────
+
+    private JTabbedPane buildRoleTabs() {
+        JTabbedPane tp = new JTabbedPane(JTabbedPane.TOP) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setColor(UITheme.NAVY2);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                super.paintComponent(g);
+            }
+        };
+        tp.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tp.setOpaque(true);
+        tp.setBackground(UITheme.NAVY2);
+        tp.setForeground(Color.WHITE);
+
+        // Thêm 3 tab (nội dung placeholder – subclass sẽ populate roleContentPanels)
+        tp.addTab("👤  Nhân viên",       new JPanel());
+        tp.addTab("📊  Quản lý",          new JPanel());
+        tp.addTab("🛠  Quản trị hệ thống", new JPanel());
+
+        // Custom tab UI
+        tp.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
+            @Override
+            protected void paintTabBackground(Graphics g, int tabPlacement,
+                    int tabIndex, int x, int y, int w, int h, boolean isSelected) {
+                Graphics2D g2 = (Graphics2D) g;
+                if (isSelected) {
+                    g2.setColor(UITheme.BG_PAGE);
+                    g2.fillRect(x, y, w, h);
+                } else if (!tp.isEnabledAt(tabIndex)) {
+                    g2.setColor(new Color(30, 41, 59)); // disabled
+                    g2.fillRect(x, y, w, h);
+                } else {
+                    g2.setColor(UITheme.NAVY2);
+                    g2.fillRect(x, y, w, h);
+                }
+            }
+            @Override
+            protected void paintTabBorder(Graphics g, int tabPlacement,
+                    int tabIndex, int x, int y, int w, int h, boolean isSelected) {
+                if (isSelected) {
+                    g.setColor(UITheme.BLUE);
+                    g.fillRect(x + 2, y + h - 3, w - 4, 3);
+                }
+            }
+            @Override
+            protected void paintFocusIndicator(Graphics g, int tabPlacement,
+                    Rectangle[] rects, int tabIndex, Rectangle iconRect,
+                    Rectangle textRect, boolean isSelected) { /* no focus ring */ }
+            @Override protected int calculateTabHeight(int tabPlacement, int tabIndex, int fontHeight) { return 38; }
+        });
+
+        // Màu chữ theo trạng thái (sẽ được setEnabledAt từ subclass)
+        tp.addChangeListener(e -> updateTabColors(tp));
+        updateTabColors(tp);
+
+        return tp;
+    }
+
+    private void updateTabColors(JTabbedPane tp) {
+        for (int i = 0; i < tp.getTabCount(); i++) {
+            if (!tp.isEnabledAt(i)) {
+                tp.setForegroundAt(i, new Color(71, 85, 105)); // disabled text
+            } else if (tp.getSelectedIndex() == i) {
+                tp.setForegroundAt(i, UITheme.TEXT);
+            } else {
+                tp.setForegroundAt(i, new Color(203, 213, 225));
+            }
+        }
+    }
+
+    // ── Topbar ────────────────────────────────────────────────────────────────
 
     private JPanel buildTopBar() {
         JPanel bar = new JPanel(new BorderLayout());
@@ -126,9 +274,9 @@ public abstract class BaseFrame extends JFrame {
         btnBell.addActionListener(e -> onBellClick());
 
         // Avatar
-        String initials = ten.length() >= 2
+        String initials = ten.length() >= 1
                 ? String.valueOf(ten.charAt(0)).toUpperCase()
-                : ten.toUpperCase();
+                : "?";
         JButton btnAvatar = new JButton(initials) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
@@ -158,7 +306,6 @@ public abstract class BaseFrame extends JFrame {
         right.add(bellWrap);
         right.add(btnAvatar);
 
-        // Center wrap
         JPanel centerWrap = new JPanel(new GridBagLayout());
         centerWrap.setOpaque(false);
         centerWrap.add(lblClock);
@@ -167,7 +314,6 @@ public abstract class BaseFrame extends JFrame {
         bar.add(centerWrap, BorderLayout.CENTER);
         bar.add(right,      BorderLayout.EAST);
 
-        // Timer đồng hồ
         clockTimer = new Timer(1000, e -> updateClock());
         clockTimer.start();
         updateClock();
@@ -193,13 +339,13 @@ public abstract class BaseFrame extends JFrame {
         miName.setFont(UITheme.FONT_BOLD);
         miName.setEnabled(false);
 
-        JMenuItem miInfo  = menuItem("Đổi thông tin cá nhân", "✏️");
-        JMenuItem miPwd   = menuItem("Đổi mật khẩu", "🔐");
+        JMenuItem miInfo   = menuItem("Đổi thông tin cá nhân", "✏️");
+        JMenuItem miPwd    = menuItem("Đổi mật khẩu", "🔐");
         JMenuItem miLogout = menuItem("Đăng xuất", "🚪");
         miLogout.setForeground(UITheme.RED);
 
-        miInfo.addActionListener(e -> showDoiThongTin());
-        miPwd.addActionListener(e  -> showDoiMatKhau());
+        miInfo.addActionListener(e   -> showDoiThongTin());
+        miPwd.addActionListener(e    -> showDoiMatKhau());
         miLogout.addActionListener(e -> doLogout());
 
         popup.add(miName);
@@ -212,7 +358,7 @@ public abstract class BaseFrame extends JFrame {
         popup.show(anchor, 0, anchor.getHeight() + 4);
     }
 
-    // ── Popup đổi mật khẩu ──────────────────────────────────────────────────
+    // ── Popup đổi mật khẩu ───────────────────────────────────────────────────
 
     private void showDoiMatKhau() {
         JPanel p = new JPanel(new GridLayout(3, 2, 8, 10));
@@ -222,7 +368,7 @@ public abstract class BaseFrame extends JFrame {
         JPasswordField fConf = new JPasswordField();
         p.add(new JLabel("Mật khẩu cũ:"));   p.add(fOld);
         p.add(new JLabel("Mật khẩu mới:"));   p.add(fNew);
-        p.add(new JLabel("Xác nhận:"));         p.add(fConf);
+        p.add(new JLabel("Xác nhận:"));        p.add(fConf);
 
         int r = JOptionPane.showConfirmDialog(this, p, "Đổi mật khẩu",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -232,7 +378,6 @@ public abstract class BaseFrame extends JFrame {
             if (n.isEmpty()) { showError("Mật khẩu mới không được để trống."); return; }
             if (!n.equals(c)) { showError("Mật khẩu xác nhận không khớp."); return; }
             if (n.length() < 6) { showError("Mật khẩu phải có ít nhất 6 ký tự."); return; }
-            // TODO: gọi DAO đổi mật khẩu
             JOptionPane.showMessageDialog(this, "Đổi mật khẩu thành công!", "Thành công",
                     JOptionPane.INFORMATION_MESSAGE);
         }
@@ -257,13 +402,76 @@ public abstract class BaseFrame extends JFrame {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    //  ABSTRACT / HOOK
+    //  PROTECTED API cho subclass
     // ═════════════════════════════════════════════════════════════════════════
 
-    /** Subclass override để cung cấp toolbar riêng. Trả null nếu không có. */
-    protected abstract JPanel buildToolbar();
+    /**
+     * Subclass gọi trong constructor TRƯỚC khi setVisible:
+     *   initRoleTabs(enabledUntilIndex, defaultTabIndex);
+     *
+     * Ví dụ:
+     *   Staff   → initRoleTabs(ROLE_TAB_STAFF,   ROLE_TAB_STAFF)
+     *   Manager → initRoleTabs(ROLE_TAB_MANAGER, ROLE_TAB_MANAGER)
+     *   Admin   → initRoleTabs(ROLE_TAB_ADMIN,   ROLE_TAB_ADMIN)
+     */
+    protected void initRoleTabs(int enabledUntilIndex, int defaultTabIndex) {
+        // Disable các tab vượt quyền
+        for (int i = 0; i < roleTabs.getTabCount(); i++) {
+            roleTabs.setEnabledAt(i, i <= enabledUntilIndex);
+        }
+        updateTabColors(roleTabs);
 
-    /** Gọi khi click chuông thông báo. */
+        // Build toolbar cho mỗi tab đã enable
+        for (int i = 0; i <= enabledUntilIndex; i++) {
+            roleToolbars[i] = buildToolbarForRole(i);
+        }
+
+        // Hiện tab mặc định
+        roleTabs.setSelectedIndex(defaultTabIndex);
+        toolbarWrapper.removeAll();
+        if (roleToolbars[defaultTabIndex] != null) {
+            toolbarWrapper.add(roleToolbars[defaultTabIndex], BorderLayout.CENTER);
+        }
+        toolbarWrapper.revalidate();
+    }
+
+    /**
+     * Subclass override để build toolbar riêng cho mỗi tab vai trò.
+     * @param roleTabIndex ROLE_TAB_STAFF | ROLE_TAB_MANAGER | ROLE_TAB_ADMIN
+     * @return JPanel toolbar, hoặc null nếu không cần toolbar
+     */
+    protected JPanel buildToolbarForRole(int roleTabIndex) {
+        return null; // mặc định: không có toolbar
+    }
+
+    /**
+     * Gọi sau khi tab vai trò thay đổi. Subclass override nếu cần load data.
+     */
+    protected void onRoleTabChanged(int newRoleTabIndex) { }
+
+    /**
+     * Trả về panel nội dung của tab vai trò tương ứng.
+     * Subclass dùng để đặt nội dung: getRoleContentPanel(ROLE_TAB_STAFF).add(...)
+     */
+    protected JPanel getRoleContentPanel(int roleTabIndex) {
+        return roleContentPanels[roleTabIndex];
+    }
+
+    // Backward-compat: subclass cũ dùng contentPanel → trỏ vào tab Staff
+    @Deprecated
+    protected JPanel contentPanel;
+
+    /**
+     * Gọi sau khi subclass đặt nội dung vào roleContentPanels,
+     * để ghi đè contentPanel trỏ về đúng tab.
+     * @deprecated Dùng getRoleContentPanel(index) thay thế.
+     */
+    @Deprecated
+    protected void setDefaultContentPanel(int roleTabIndex) {
+        this.contentPanel = roleContentPanels[roleTabIndex];
+    }
+
+    /** Chuông – hook. */
     protected void onBellClick() {
         JOptionPane.showMessageDialog(this,
                 "Chưa có thông báo mới.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -315,9 +523,8 @@ public abstract class BaseFrame extends JFrame {
     protected JButton toolbarBtn(String icon, String label) {
         String display = (icon != null && !icon.isEmpty()) ? icon + "  " + label : label;
         JButton btn = new JButton(display) {
-            private boolean hovered  = false;
-            private boolean pressed  = false;
-
+            private boolean hovered = false;
+            private boolean pressed = false;
             {
                 addMouseListener(new MouseAdapter() {
                     @Override public void mouseEntered(MouseEvent e)  { hovered = true;  repaint(); }
@@ -326,7 +533,6 @@ public abstract class BaseFrame extends JFrame {
                     @Override public void mouseReleased(MouseEvent e) { pressed = false; repaint(); }
                 });
             }
-
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -342,7 +548,6 @@ public abstract class BaseFrame extends JFrame {
                 super.paintComponent(g);
             }
         };
-
         btn.setFont(UITheme.FONT_BODY);
         btn.setForeground(Color.WHITE);
         btn.setContentAreaFilled(false);
@@ -351,7 +556,6 @@ public abstract class BaseFrame extends JFrame {
         btn.setOpaque(false);
         btn.setBorder(new EmptyBorder(6, 10, 6, 10));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
         return btn;
     }
 
@@ -359,7 +563,7 @@ public abstract class BaseFrame extends JFrame {
     protected JPanel createToolbarPanel() {
         JPanel tb = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 4));
         tb.setBackground(UITheme.NAVY2);
-        tb.setPreferredSize(new Dimension(0, 64));
+        tb.setPreferredSize(new Dimension(0, 56));
         tb.setBorder(new EmptyBorder(0, 8, 0, 8));
         return tb;
     }
@@ -368,7 +572,7 @@ public abstract class BaseFrame extends JFrame {
     protected JComponent toolbarSep() {
         JPanel sep = new JPanel();
         sep.setBackground(new Color(255, 255, 255, 40));
-        sep.setPreferredSize(new Dimension(1, 40));
+        sep.setPreferredSize(new Dimension(1, 36));
         return sep;
     }
 
@@ -412,7 +616,6 @@ public abstract class BaseFrame extends JFrame {
         table.setSelectionBackground(UITheme.BLUE_PALE);
         table.setSelectionForeground(UITheme.TEXT);
         table.getTableHeader().setReorderingAllowed(false);
-        // Custom header renderer — L&F mặc định hay ghi đè setBackground/setForeground trực tiếp
         table.getTableHeader().setDefaultRenderer(new javax.swing.table.DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(
@@ -457,4 +660,8 @@ public abstract class BaseFrame extends JFrame {
         });
         return btn;
     }
+
+    // ── Backward compat: subclass cũ có buildToolbar() abstract ──────────────
+    // Giữ lại để không break compile (để trống)
+    protected JPanel buildToolbar() { return null; }
 }

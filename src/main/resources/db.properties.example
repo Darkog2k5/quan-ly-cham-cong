@@ -1,0 +1,5 @@
+# Tự tạo 1 file db.properties trong src/main/resources với nội dung như sau và đổi mật khẩu:
+db.driver=com.microsoft.sqlserver.jdbc.SQLServerDriver
+db.url=jdbc:sqlserver://localhost:1433;databaseName=HeThongQuanLyCaLamViec;encrypt=true;trustServerCertificate=true;
+db.user=sa
+db.password=DIEN_MAT_KHAU_CUA_BAN

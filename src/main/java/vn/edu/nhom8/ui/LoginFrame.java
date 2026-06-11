@@ -1,6 +1,9 @@
 package vn.edu.nhom8.ui;
 
+import vn.edu.nhom8.dao.ChamCongDAO;
+import vn.edu.nhom8.dao.LichPhanCaDAO;
 import vn.edu.nhom8.dao.NhanVienDAO;
+import vn.edu.nhom8.dao.YeuCauDoiCaDAO;
 import vn.edu.nhom8.model.NhanVien;
 import vn.edu.nhom8.util.SessionManager;
 
@@ -336,20 +339,35 @@ public class LoginFrame extends JFrame {
      */
     private void openMainFrame(NhanVien nv) {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame;
-            switch (nv.getVaiTro().toLowerCase()) {
-                case "admin":
-                    frame = new AdminFrame();
-                    break;
-                case "manager":
-                    frame = new ManagerFrame();
-                    break;
-                default: // staff
-                    frame = new StaffFrame();
-                    break;
+            try {
+                JFrame frame;
+                switch (nv.getVaiTro().toLowerCase()) {
+                    case "admin":
+                        frame = new AdminFrame();
+                        break;
+                    case "manager":
+                        frame = new ManagerFrame(
+                            new NhanVienDAO(),
+                            new LichPhanCaDAO(),
+                            new YeuCauDoiCaDAO()
+                        );
+                        break;
+                    default: // staff
+                        frame = new StaffFrame(
+                            new ChamCongDAO(),
+                            new LichPhanCaDAO(),
+                            new YeuCauDoiCaDAO()
+                        );
+                        break;
+                }
+                frame.setVisible(true);
+                this.dispose();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this,
+                    "Lỗi khi mở màn hình: " + ex.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
-            frame.setVisible(true);
-            this.dispose();
         });
     }
 

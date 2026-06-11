@@ -1,8 +1,10 @@
 package vn.edu.nhom8.ui;
 
+import vn.edu.nhom8.dao.CaLamViecDAO;
 import vn.edu.nhom8.dao.ILichPhanCaDAO;
 import vn.edu.nhom8.dao.INhanVienDAO;
 import vn.edu.nhom8.dao.IYeuCauDoiCaDAO;
+import vn.edu.nhom8.model.CaLamViec;
 import vn.edu.nhom8.model.LichPhanCa;
 import vn.edu.nhom8.model.NhanVien;
 import vn.edu.nhom8.model.YeuCauDoiCa;
@@ -29,8 +31,10 @@ import java.util.List;
 public class ManagerFrame extends BaseFrame {
 
     private final ManagerService service;
+    private final CaLamViecDAO   caDAO = new CaLamViecDAO();
 
     private JTabbedPane tabs;
+    private JComboBox<CaLamViec> cboCa;   // combobox ca – load từ DB
     private static final int TAB_XEPLICH  = 0;
     private static final int TAB_DUYET    = 1;
     private static final int TAB_LICHTONG = 2;
@@ -57,6 +61,7 @@ public class ManagerFrame extends BaseFrame {
         super("Quản lý");
         this.service = new ManagerService(lichDAO, nvDAO, ycDAO);
         buildContent();
+        initRoleTabs(ROLE_TAB_MANAGER, ROLE_TAB_MANAGER);
         loadStatBar();
         setVisible(true);
     }
@@ -68,7 +73,8 @@ public class ManagerFrame extends BaseFrame {
     // ── Toolbar ───────────────────────────────────────────────────────────────
 
     @Override
-    protected JPanel buildToolbar() {
+    protected JPanel buildToolbarForRole(int roleTabIndex) {
+        if (roleTabIndex != ROLE_TAB_MANAGER) return null;
         JPanel tb = createToolbarPanel();
 
         JButton btnXep   = toolbarBtn("📅", "Xếp lịch");
@@ -94,7 +100,7 @@ public class ManagerFrame extends BaseFrame {
 
     private void buildContent() {
         statBar = buildStatBar();
-        contentPanel.add(statBar, BorderLayout.NORTH);
+        getRoleContentPanel(ROLE_TAB_MANAGER).add(statBar, BorderLayout.NORTH);
 
         tabs = new JTabbedPane(JTabbedPane.TOP);
         tabs.setFont(UITheme.FONT_BODY);
@@ -107,7 +113,7 @@ public class ManagerFrame extends BaseFrame {
             if (tabs.getSelectedIndex() == TAB_LICHTONG) loadLichTong();
         });
 
-        contentPanel.add(tabs, BorderLayout.CENTER);
+        getRoleContentPanel(ROLE_TAB_MANAGER).add(tabs, BorderLayout.CENTER);
     }
 
     // ── Stat bar ──────────────────────────────────────────────────────────────
@@ -193,12 +199,35 @@ public class ManagerFrame extends BaseFrame {
         spNgay.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         spNgay.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Chọn ca (sẽ load từ CaLamViecDAO khi nhóm Khởi xong; tạm hardcode)
-        String[] caItems = {"CA01 – Ca sáng (07:00–12:00)", "CA02 – Ca chiều (13:00–18:00)", "CA03 – Ca tối (18:00–22:00)"};
-        JComboBox<String> cboCa = new JComboBox<>(caItems);
+        // Combobox ca – load từ DB
+        cboCa = new JComboBox<>();
+        cboCa.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int idx, boolean sel, boolean foc) {
+                super.getListCellRendererComponent(list, value, idx, sel, foc);
+                if (value instanceof CaLamViec) {
+                    CaLamViec c = (CaLamViec) value;
+                    String bd = c.getGioBatDau()  != null ? c.getGioBatDau().toString().substring(0,5)  : "?";
+                    String kt = c.getGioKetThuc() != null ? c.getGioKetThuc().toString().substring(0,5) : "?";
+                    setText(c.getMaCa() + " – " + c.getTenCa() + " (" + bd + "–" + kt + ")");
+                }
+                return this;
+            }
+        });
         cboCa.setFont(UITheme.FONT_BODY);
         cboCa.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         cboCa.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Tải ca từ DB
+        new SwingWorker<List<CaLamViec>, Void>() {
+            @Override protected List<CaLamViec> doInBackground() { return caDAO.findAll(); }
+            @Override protected void done() {
+                try {
+                    cboCa.removeAllItems();
+                    for (CaLamViec c : get()) cboCa.addItem(c);
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
 
         // Danh sách NV checkbox (load từ DB)
         JPanel nvListPanel = new JPanel(); nvListPanel.setOpaque(false);
@@ -253,8 +282,10 @@ public class ManagerFrame extends BaseFrame {
             }
             if (dsMaNV.isEmpty()) { showError("Vui lòng chọn ít nhất 1 nhân viên."); return; }
 
-            // Lấy maCa từ combobox (CA01 / CA02 / CA03)
-            String maCa = "CA0" + (cboCa.getSelectedIndex() + 1);
+            // Lấy maCa từ object CaLamViec được chọn
+            CaLamViec caChon = (CaLamViec) cboCa.getSelectedItem();
+            if (caChon == null) { showError("Vui lòng chọn ca làm việc."); return; }
+            String maCa = caChon.getMaCa();
             java.util.Date ngay = (java.util.Date) spNgay.getValue();
 
             List<String> trungCa = new ArrayList<>();

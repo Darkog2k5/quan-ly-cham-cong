@@ -21,37 +21,38 @@ import java.util.List;
 /**
  * Màn hình Nhân viên – F4.
  *
- * Tab 1: Chấm công (check-in / check-out + lịch sử)
- * Tab 2: Xem ca làm (lịch tháng)
- * Tab 3: Đổi ca   (gửi yêu cầu + lịch sử)
+ * Quyền: chỉ tab "Nhân viên" (ROLE_TAB_STAFF).
+ * Tab "Quản lý" và "Quản trị hệ thống" hiển thị nhưng bị disabled.
  *
- * Mọi nghiệp vụ nằm trong StaffService – class này chỉ lo UI.
+ * Tab nội dung:
+ *   Tab 1: Chấm công (check-in / check-out + lịch sử)
+ *   Tab 2: Xem ca làm (lịch tháng)
+ *   Tab 3: Đổi ca   (gửi yêu cầu + lịch sử)
  */
 public class StaffFrame extends BaseFrame {
 
-    // Inject DAO từ ngoài vào, UI không biết implement cụ thể
     private final StaffService service;
 
     // Trạng thái chấm công phiên này
-    private LichPhanCa caHomNay    = null;
-    private boolean    daCheckIn   = false;
-    private boolean    daCheckOut  = false;
+    private LichPhanCa caHomNay  = null;
+    private boolean    daCheckIn  = false;
+    private boolean    daCheckOut = false;
 
-    // Tab index
+    // Tab nội dung bên trong tab Nhân viên
+    private JTabbedPane innerTabs;
     private static final int TAB_CHAMCONG = 0;
     private static final int TAB_LICHCA   = 1;
     private static final int TAB_DOICA    = 2;
-    private JTabbedPane tabs;
 
-    // Widgets cần cập nhật động
+    // Widgets
     private JLabel            lblCaTen, lblCaGio, lblStatus;
     private JButton           btnCheckIn, btnCheckOut;
-    private DefaultTableModel historyModel;           // bảng lịch sử chấm công
+    private DefaultTableModel historyModel;
     private JLabel            lblThang;
     private JPanel            calGrid;
     private int               calNam, calThang;
     private JComboBox<LichPhanCa> cboCaTuongLai;
-    private DefaultTableModel     ycModel;            // bảng lịch sử yêu cầu đổi ca
+    private DefaultTableModel     ycModel;
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -60,8 +61,14 @@ public class StaffFrame extends BaseFrame {
                       IYeuCauDoiCaDAO ycDAO) {
         super("Nhân viên");
         this.service = new StaffService(chamCongDAO, lichDAO, ycDAO);
-        buildContent();
-        loadCaHomNay();  // tải dữ liệu ngay khi mở
+
+        // Xây nội dung rồi mới initRoleTabs
+        buildStaffContent();
+
+        // Staff chỉ dùng được tab 0
+        initRoleTabs(ROLE_TAB_STAFF, ROLE_TAB_STAFF);
+
+        loadCaHomNay();
         setVisible(true);
     }
 
@@ -69,22 +76,24 @@ public class StaffFrame extends BaseFrame {
         this(new ChamCongDAO(), null, null);
     }
 
-    // ── Toolbar ──────────────────────────────────────────────────────────────
+    // ── Toolbar cho tab Nhân viên ─────────────────────────────────────────────
 
     @Override
-    protected JPanel buildToolbar() {
+    protected JPanel buildToolbarForRole(int roleTabIndex) {
+        if (roleTabIndex != ROLE_TAB_STAFF) return null;
+
         JPanel tb = createToolbarPanel();
 
-        JButton btnCi    = toolbarBtn("⏱", "Check-in");
-        JButton btnCo    = toolbarBtn("🏁", "Check-out");
-        JButton btnLich  = toolbarBtn("📅", "Xem ca làm");
-        JButton btnDoi   = toolbarBtn("🔄", "Đổi ca");
+        JButton btnCi     = toolbarBtn("⏱", "Check-in");
+        JButton btnCo     = toolbarBtn("🏁", "Check-out");
+        JButton btnLich   = toolbarBtn("📅", "Xem ca làm");
+        JButton btnDoi    = toolbarBtn("🔄", "Đổi ca");
         JButton btnLamMoi = toolbarBtn("🔃", "Làm mới");
 
-        btnCi.addActionListener(e     -> { tabs.setSelectedIndex(TAB_CHAMCONG); doCheckIn(); });
-        btnCo.addActionListener(e     -> { tabs.setSelectedIndex(TAB_CHAMCONG); doCheckOut(); });
-        btnLich.addActionListener(e   -> tabs.setSelectedIndex(TAB_LICHCA));
-        btnDoi.addActionListener(e    -> tabs.setSelectedIndex(TAB_DOICA));
+        btnCi.addActionListener(e     -> { innerTabs.setSelectedIndex(TAB_CHAMCONG); doCheckIn(); });
+        btnCo.addActionListener(e     -> { innerTabs.setSelectedIndex(TAB_CHAMCONG); doCheckOut(); });
+        btnLich.addActionListener(e   -> innerTabs.setSelectedIndex(TAB_LICHCA));
+        btnDoi.addActionListener(e    -> innerTabs.setSelectedIndex(TAB_DOICA));
         btnLamMoi.addActionListener(e -> refreshAll());
 
         tb.add(btnCi); tb.add(btnCo); tb.add(toolbarSep());
@@ -93,25 +102,26 @@ public class StaffFrame extends BaseFrame {
         return tb;
     }
 
-    // ── Build content ─────────────────────────────────────────────────────────
+    // ── Xây nội dung trong tab Nhân viên ─────────────────────────────────────
 
-    private void buildContent() {
+    private void buildStaffContent() {
+        JPanel staffPanel = getRoleContentPanel(ROLE_TAB_STAFF);
+
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
-        contentPanel.add(buildInfoBar(nv), BorderLayout.NORTH);
+        staffPanel.add(buildInfoBar(nv), BorderLayout.NORTH);
 
-        tabs = new JTabbedPane(JTabbedPane.TOP);
-        tabs.setFont(UITheme.FONT_BODY);
-        tabs.addTab("⏱  Chấm công",   buildChamCongTab());
-        tabs.addTab("📅  Lịch ca làm", buildLichCaTab());
-        tabs.addTab("🔄  Đổi ca",      buildDoiCaTab());
+        innerTabs = new JTabbedPane(JTabbedPane.TOP);
+        innerTabs.setFont(UITheme.FONT_BODY);
+        innerTabs.addTab("⏱  Chấm công",   buildChamCongTab());
+        innerTabs.addTab("📅  Lịch ca làm", buildLichCaTab());
+        innerTabs.addTab("🔄  Đổi ca",      buildDoiCaTab());
 
-        // Khi chuyển tab mới mới load dữ liệu (tiết kiệm query)
-        tabs.addChangeListener(e -> {
-            if (tabs.getSelectedIndex() == TAB_LICHCA)  loadCalendar();
-            if (tabs.getSelectedIndex() == TAB_DOICA) { loadCaTuongLai(); loadYeuCauHistory(); }
+        innerTabs.addChangeListener(e -> {
+            if (innerTabs.getSelectedIndex() == TAB_LICHCA)  loadCalendar();
+            if (innerTabs.getSelectedIndex() == TAB_DOICA) { loadCaTuongLai(); loadYeuCauHistory(); }
         });
 
-        contentPanel.add(tabs, BorderLayout.CENTER);
+        staffPanel.add(innerTabs, BorderLayout.CENTER);
     }
 
     // ── Thanh thông tin NV ────────────────────────────────────────────────────
@@ -165,7 +175,6 @@ public class StaffFrame extends BaseFrame {
         return bar;
     }
 
-    /** Vẽ ô avatar tròn (chữ cái đầu tên). */
     private JPanel buildAvatar(NhanVien nv) {
         JPanel av = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
@@ -195,7 +204,6 @@ public class StaffFrame extends BaseFrame {
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // Tiêu đề + nút làm mới
         JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
         JLabel title = new JLabel("Lịch sử chấm công"); title.setFont(UITheme.FONT_HEAD);
         JButton btnLamMoi = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
@@ -204,7 +212,6 @@ public class StaffFrame extends BaseFrame {
         header.add(btnLamMoi, BorderLayout.EAST);
         panel.add(header, BorderLayout.NORTH);
 
-        // Bảng lịch sử
         String[] cols = {"Ngày", "Ca làm", "Giờ vào", "Giờ ra", "Trạng thái"};
         historyModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -225,7 +232,6 @@ public class StaffFrame extends BaseFrame {
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // Điều hướng tháng
         JPanel nav = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); nav.setOpaque(false);
         JButton prev  = actionBtn("◀", UITheme.BLUE);
         JButton next  = actionBtn("▶", UITheme.BLUE);
@@ -235,25 +241,17 @@ public class StaffFrame extends BaseFrame {
         nav.add(Box.createHorizontalStrut(12)); nav.add(lblThang);
         panel.add(nav, BorderLayout.NORTH);
 
-        // Khởi tạo tháng hiện tại
         Calendar now = Calendar.getInstance();
         calNam = now.get(Calendar.YEAR); calThang = now.get(Calendar.MONTH) + 1;
 
-        prev.addActionListener(e -> {
-            if (--calThang < 1) { calThang = 12; calNam--; }
-            loadCalendar();
-        });
-        next.addActionListener(e -> {
-            if (++calThang > 12) { calThang = 1; calNam++; }
-            loadCalendar();
-        });
+        prev.addActionListener(e -> { if (--calThang < 1)  { calThang = 12; calNam--; } loadCalendar(); });
+        next.addActionListener(e -> { if (++calThang > 12) { calThang = 1; calNam++;  } loadCalendar(); });
         today.addActionListener(e -> {
             Calendar c = Calendar.getInstance();
             calNam = c.get(Calendar.YEAR); calThang = c.get(Calendar.MONTH) + 1;
             loadCalendar();
         });
 
-        // Grid lịch (được build lại mỗi khi loadCalendar())
         calGrid = new JPanel(new GridLayout(0, 7, 3, 3));
         calGrid.setBackground(UITheme.BG_CARD);
         calGrid.setBorder(BorderFactory.createCompoundBorder(
@@ -263,7 +261,6 @@ public class StaffFrame extends BaseFrame {
         JPanel wrap = new JPanel(new BorderLayout(0, 8)); wrap.setOpaque(false);
         wrap.add(calGrid, BorderLayout.CENTER);
 
-        // Chú thích màu
         JPanel legend = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4)); legend.setOpaque(false);
         legend.add(dotLabel(UITheme.BLUE,             "Hôm nay"));
         legend.add(dotLabel(UITheme.BLUE_PALE,        "Có ca"));
@@ -281,7 +278,6 @@ public class StaffFrame extends BaseFrame {
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // ── Form gửi yêu cầu ─────────────────────────────────────────────────
         JPanel formCard = createCard("Gửi yêu cầu đổi ca");
         JPanel body = new JPanel(); body.setOpaque(false);
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -290,7 +286,6 @@ public class StaffFrame extends BaseFrame {
         hint.setFont(UITheme.FONT_SMALL); hint.setForeground(UITheme.AMBER);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Combobox ca tương lai – hiện tên ca + ngày
         cboCaTuongLai = new JComboBox<>();
         cboCaTuongLai.setFont(UITheme.FONT_BODY);
         cboCaTuongLai.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
@@ -310,7 +305,6 @@ public class StaffFrame extends BaseFrame {
             }
         });
 
-        // Mã NV đổi cùng (không bắt buộc)
         JTextField txtNVNhan = new JTextField();
         txtNVNhan.setFont(UITheme.FONT_BODY);
         txtNVNhan.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
@@ -319,7 +313,6 @@ public class StaffFrame extends BaseFrame {
         txtNVNhan.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER), new EmptyBorder(4, 8, 4, 8)));
 
-        // Lý do
         JTextArea txtLyDo = new JTextArea(3, 20);
         txtLyDo.setFont(UITheme.FONT_BODY); txtLyDo.setLineWrap(true); txtLyDo.setWrapStyleWord(true);
         txtLyDo.setBorder(BorderFactory.createCompoundBorder(
@@ -333,16 +326,13 @@ public class StaffFrame extends BaseFrame {
         btnGui.addActionListener(e -> {
             NhanVien nv = SessionManager.getInstance().getCurrentUser();
             if (nv == null) return;
-
             Object sel = cboCaTuongLai.getSelectedItem();
             String maLich = (sel instanceof LichPhanCa) ? ((LichPhanCa) sel).getMaLich() : null;
-
             String err = service.guiYeuCauDoiCa(
                     nv.getMaNV(), maLich,
                     txtNVNhan.getText().trim(),
                     txtLyDo.getText().trim());
-
-            if (err == null) {  // null = thành công
+            if (err == null) {
                 showSuccess("Gửi yêu cầu thành công!\nVui lòng chờ Quản lý duyệt.");
                 txtLyDo.setText(""); txtNVNhan.setText("");
                 loadYeuCauHistory();
@@ -361,7 +351,6 @@ public class StaffFrame extends BaseFrame {
         body.add(btnGui);
         formCard.add(body, BorderLayout.CENTER);
 
-        // ── Bảng lịch sử yêu cầu ──────────────────────────────────────────────
         JPanel histCard = createCard("Lịch sử yêu cầu đổi ca");
         String[] cols = {"Mã YC", "Mã ca", "NV đổi cùng", "Trạng thái", "Ngày tạo"};
         JTable tbl = createTable(cols);
@@ -375,14 +364,12 @@ public class StaffFrame extends BaseFrame {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    //  LOAD DATA (gọi service, cập nhật UI trên EDT)
+    //  LOAD DATA
     // ═════════════════════════════════════════════════════════════════════════
 
-    /** Tải ca hôm nay, cập nhật card info + trạng thái nút. */
     private void loadCaHomNay() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
-
         new SwingWorker<LichPhanCa, Void>() {
             @Override protected LichPhanCa doInBackground() {
                 return service.getCaHomNay(nv.getMaNV());
@@ -394,8 +381,6 @@ public class StaffFrame extends BaseFrame {
                         lblCaTen.setText("Ca: " + caHomNay.getMaCa());
                         lblCaTen.setForeground(UITheme.BLUE);
                         lblCaGio.setText("Ngày: " + new SimpleDateFormat("dd/MM/yyyy").format(caHomNay.getNgayLamViec()));
-
-                        // Xét trạng thái từ DB (phòng TH mở lại ứng dụng)
                         boolean ci = service.isCheckedIn(nv.getMaNV(), caHomNay.getMaLich());
                         if (ci) {
                             daCheckIn = true;
@@ -413,11 +398,9 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
-    /** Tải lịch sử chấm công vào bảng. */
     private void loadLichSuChamCong() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
-
         new SwingWorker<List<ChamCong>, Void>() {
             @Override protected List<ChamCong> doInBackground() {
                 return service.getLichSuChamCong(nv.getMaNV());
@@ -429,7 +412,7 @@ public class StaffFrame extends BaseFrame {
                     for (ChamCong cc : get()) {
                         historyModel.addRow(new Object[]{
                                 cc.getMaLich(),
-                                cc.getMaLich(), // sẽ join với tên ca khi DAO trả đủ thông tin
+                                cc.getMaLich(),
                                 cc.getGioVao() != null ? fmt.format(cc.getGioVao()) : "—",
                                 cc.getGioRa()  != null ? fmt.format(cc.getGioRa())  : "—",
                                 trangThaiLabel(cc.getTrangThai())
@@ -440,12 +423,10 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
-    /** Tải lịch tháng và vẽ lại grid. */
     private void loadCalendar() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
         lblThang.setText("Tháng " + calThang + " / " + calNam);
-
         new SwingWorker<List<LichPhanCa>, Void>() {
             @Override protected List<LichPhanCa> doInBackground() {
                 return service.getLichTheoThang(nv.getMaNV(), calNam, calThang);
@@ -457,50 +438,36 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
-    /** Vẽ lại lưới ô ngày trong tháng. */
     private void buildCalGrid(List<LichPhanCa> lichTrongThang) {
         calGrid.removeAll();
-
-        // Tiêu đề ngày trong tuần
         for (String d : new String[]{"CN","T2","T3","T4","T5","T6","T7"}) {
             JLabel h = new JLabel(d, SwingConstants.CENTER);
             h.setFont(UITheme.FONT_BOLD); h.setForeground(UITheme.MUTED);
             calGrid.add(h);
         }
-
-        // Map: ngày → LichPhanCa
         Map<Integer, LichPhanCa> dayMap = new HashMap<>();
         for (LichPhanCa lp : lichTrongThang) {
             Calendar c = Calendar.getInstance(); c.setTime(lp.getNgayLamViec());
             dayMap.put(c.get(Calendar.DAY_OF_MONTH), lp);
         }
-
-        // Ô trống đầu tháng
         Calendar first = Calendar.getInstance(); first.set(calNam, calThang - 1, 1);
         int startDow    = first.get(Calendar.DAY_OF_WEEK) - 1;
         int daysInMonth = first.getActualMaximum(Calendar.DAY_OF_MONTH);
-
         Calendar todayCal = Calendar.getInstance();
         int todayDay = (todayCal.get(Calendar.YEAR) == calNam && todayCal.get(Calendar.MONTH) + 1 == calThang)
                        ? todayCal.get(Calendar.DAY_OF_MONTH) : -1;
-
         for (int i = 0; i < startDow; i++) calGrid.add(new JLabel());
-
         for (int d = 1; d <= daysInMonth; d++) {
             final int day = d;
             LichPhanCa lp = dayMap.get(d);
             boolean isToday = (d == todayDay);
-
             JPanel cell = new JPanel(new BorderLayout());
             cell.setBorder(new EmptyBorder(3, 3, 3, 3));
             cell.setBackground(isToday ? UITheme.BLUE : lp != null ? UITheme.BLUE_PALE : new Color(248, 250, 252));
-
             JLabel lDay = new JLabel(String.valueOf(d), SwingConstants.CENTER);
             lDay.setFont(isToday ? new Font("Segoe UI", Font.BOLD, 13) : UITheme.FONT_SMALL);
             lDay.setForeground(isToday ? Color.WHITE : lp != null ? UITheme.NAVY : UITheme.MUTED);
             cell.add(lDay, BorderLayout.CENTER);
-
-            // Click vào ô có ca → hiện popup chi tiết
             if (lp != null) {
                 cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 LichPhanCa finalLp = lp;
@@ -516,15 +483,12 @@ public class StaffFrame extends BaseFrame {
             }
             calGrid.add(cell);
         }
-
         calGrid.revalidate(); calGrid.repaint();
     }
 
-    /** Tải danh sách ca tương lai vào combobox. */
     private void loadCaTuongLai() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
-
         new SwingWorker<List<LichPhanCa>, Void>() {
             @Override protected List<LichPhanCa> doInBackground() {
                 return service.getCaTuongLai(nv.getMaNV());
@@ -540,11 +504,9 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
-    /** Tải lịch sử yêu cầu đổi ca. */
     private void loadYeuCauHistory() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
-
         new SwingWorker<List<YeuCauDoiCa>, Void>() {
             @Override protected List<YeuCauDoiCa> doInBackground() {
                 return service.getYeuCauCuaNV(nv.getMaNV());
@@ -575,11 +537,8 @@ public class StaffFrame extends BaseFrame {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
         if (daCheckIn) { showError("Bạn đã check-in rồi!"); return; }
-
         String err = service.checkIn(nv.getMaNV(), caHomNay != null ? caHomNay.getMaLich() : null);
         if (err != null) { showError(err); return; }
-
-        // Thành công
         daCheckIn = true;
         String now = new SimpleDateFormat("HH:mm:ss").format(new Date());
         btnCheckIn.setEnabled(false); btnCheckOut.setEnabled(true);
@@ -593,15 +552,11 @@ public class StaffFrame extends BaseFrame {
         if (nv == null) return;
         if (!daCheckIn)  { showError("Bạn chưa check-in!"); return; }
         if (daCheckOut)  { showError("Bạn đã check-out rồi!"); return; }
-
         int confirm = JOptionPane.showConfirmDialog(this, "Xác nhận check-out?",
                 "Check-out", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
-
         String err = service.checkOut(nv.getMaNV(), caHomNay != null ? caHomNay.getMaLich() : null);
         if (err != null) { showError(err); return; }
-
-        // Thành công
         daCheckOut = true;
         String now = new SimpleDateFormat("HH:mm:ss").format(new Date());
         btnCheckOut.setEnabled(false);
@@ -615,25 +570,24 @@ public class StaffFrame extends BaseFrame {
         lblCaTen.setText("Đang tải..."); lblCaTen.setForeground(UITheme.BLUE);
         btnCheckIn.setEnabled(false); btnCheckOut.setEnabled(false);
         loadCaHomNay();
-        if (tabs.getSelectedIndex() == TAB_LICHCA) loadCalendar();
+        if (innerTabs.getSelectedIndex() == TAB_LICHCA) loadCalendar();
     }
 
     // ═════════════════════════════════════════════════════════════════════════
     //  HELPERS
     // ═════════════════════════════════════════════════════════════════════════
 
-    /** Mã trạng thái DB → nhãn tiếng Việt. */
     static String trangThaiLabel(String code) {
         if (code == null) return "—";
         switch (code) {
-            case "DungGio":    return "Đúng giờ";
-            case "DiMuon":     return "Đi muộn";
-            case "VeSom":      return "Về sớm";
-            case "ChoDuyet":   return "Chờ duyệt";
-            case "DaDuyet":    return "Đã duyệt";
-            case "TuChoi":     return "Từ chối";
-            case "DaPhan":     return "Đã phân";
-            default:            return code;
+            case "DungGio":  return "Đúng giờ";
+            case "DiMuon":   return "Đi muộn";
+            case "VeSom":    return "Về sớm";
+            case "ChoDuyet": return "Chờ duyệt";
+            case "DaDuyet":  return "Đã duyệt";
+            case "TuChoi":   return "Từ chối";
+            case "DaPhan":   return "Đã phân";
+            default:          return code;
         }
     }
 
