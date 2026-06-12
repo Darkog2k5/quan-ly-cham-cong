@@ -323,3 +323,73 @@ BEGIN
     WHERE maYeuCau = @MaYeuCau;
 END
 GO
+
+-- =====================================
+-- LỊCH PHÂN CA: Sửa & Xóa (Quản lý)
+-- =====================================
+CREATE PROCEDURE sp_UpdateLichPhanCaFull
+    @MaLich      VARCHAR(20),
+    @MaNV        VARCHAR(20),
+    @MaCa        VARCHAR(20),
+    @NgayLamViec DATE,
+    @TrangThai   NVARCHAR(30)
+AS
+BEGIN
+    UPDATE LichPhanCa
+    SET maNV = @MaNV,
+        maCa = @MaCa,
+        ngayLamViec = @NgayLamViec,
+        trangThai = @TrangThai
+    WHERE maLich = @MaLich;
+END
+GO
+
+CREATE PROCEDURE sp_DeleteLichPhanCa
+    @MaLich VARCHAR(20)
+AS
+BEGIN
+    DELETE FROM LichPhanCa WHERE maLich = @MaLich;
+END
+GO
+/* =====================================================================
+   FIX: Đồng bộ database với code Java (model YeuCauDoiCa có thêm maLichTarget)
+   Chạy script này trên database hiện tại của bạn (KHÔNG cần xóa dữ liệu cũ)
+   ===================================================================== */
+
+USE HeThongQuanLyCaLamViec; 
+GO
+
+-- 1) Thêm cột maLichTarget vào bảng YeuCauDoiCa (nếu chưa có)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('YeuCauDoiCa') AND name = 'maLichTarget'
+)
+BEGIN
+    ALTER TABLE YeuCauDoiCa
+    ADD maLichTarget VARCHAR(20) NULL
+        CONSTRAINT FK_YeuCauDoiCa_LichTarget FOREIGN KEY REFERENCES LichPhanCa(maLich);
+END
+GO
+
+-- 2) Sửa lại sp_InsertYeuCauDoiCa để nhận thêm @MaLichTarget (6 tham số, đúng với DAO)
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'sp_InsertYeuCauDoiCa')
+    DROP PROCEDURE sp_InsertYeuCauDoiCa;
+GO
+
+CREATE PROCEDURE sp_InsertYeuCauDoiCa
+    @MaYeuCau     VARCHAR(20),
+    @MaLichGoc    VARCHAR(20),
+    @MaNVTarget   VARCHAR(20),
+    @MaLichTarget VARCHAR(20) = NULL,
+    @LyDo         NVARCHAR(255),
+    @TrangThai    NVARCHAR(30) = N'ChoDuyet'
+AS
+BEGIN
+    INSERT INTO YeuCauDoiCa (maYeuCau, maLichGoc, maNVTarget, maLichTarget, lyDo, trangThai, ngayTao)
+    VALUES (@MaYeuCau, @MaLichGoc, @MaNVTarget, @MaLichTarget, @LyDo, @TrangThai, GETDATE());
+END
+GO
+
+-- 3) sp_FindAllYeuCauDoiCa và sp_FindYeuCauDoiCaById dùng SELECT * nên không cần sửa,
+--    cột mới sẽ tự động được trả về.
+

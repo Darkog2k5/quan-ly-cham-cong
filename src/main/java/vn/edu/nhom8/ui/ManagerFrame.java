@@ -43,6 +43,8 @@ public class ManagerFrame extends BaseFrame {
     private List<JCheckBox>   checkBoxesNV = new ArrayList<>();
     private List<NhanVien>    danhSachNV   = new ArrayList<>();
     private DefaultTableModel lichDaXepModel;
+    private JTable            tblLichDaXep;
+    private List<LichPhanCa>  dsLichDaXep  = new ArrayList<>();
 
     // Widgets tab Duyệt đổi ca
     private DefaultTableModel duyetModel;
@@ -62,6 +64,8 @@ public class ManagerFrame extends BaseFrame {
         this.service = new ManagerService(lichDAO, nvDAO, ycDAO);
         buildContent();
         initRoleTabs(ROLE_TAB_MANAGER, ROLE_TAB_MANAGER);
+        // Quản lý không được truy cập tab "Nhân viên"
+        setRoleTabEnabled(ROLE_TAB_STAFF, false);
         loadStatBar();
         setVisible(true);
     }
@@ -323,13 +327,108 @@ public class ManagerFrame extends BaseFrame {
 
         String[] cols = {"Mã lịch", "Mã NV", "Mã ca", "Ngày", "Trạng thái"};
         JTable tbl = createTable(cols);
+        tblLichDaXep   = tbl;
         lichDaXepModel = (DefaultTableModel) tbl.getModel();
         JScrollPane sp = new JScrollPane(tbl);
         sp.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
         rightCard.add(sp, BorderLayout.CENTER);
 
+        // Nút Sửa / Xóa lịch đã xếp
+        JPanel actRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8)); actRow.setOpaque(false);
+        JButton btnSua = actionBtn("✏️  Sửa",  UITheme.BLUE);
+        JButton btnXoa = actionBtn("🗑️  Xóa",  UITheme.RED);
+        JLabel hintXep = new JLabel("← Chọn một hàng rồi nhấn nút");
+        hintXep.setFont(UITheme.FONT_SMALL); hintXep.setForeground(UITheme.MUTED);
+
+        btnSua.addActionListener(e -> suaLichDaXep());
+        btnXoa.addActionListener(e -> xoaLichDaXep());
+
+        actRow.add(btnSua); actRow.add(btnXoa); actRow.add(hintXep);
+        rightCard.add(actRow, BorderLayout.SOUTH);
+
         panel.add(formCard); panel.add(rightCard);
         return panel;
+    }
+
+    /** Mở dialog sửa lịch đã chọn (đổi ca và/hoặc ngày làm việc). */
+    private void suaLichDaXep() {
+        int row = tblLichDaXep.getSelectedRow();
+        if (row < 0) { showError("Vui lòng chọn một dòng lịch để sửa."); return; }
+        LichPhanCa lich = dsLichDaXep.get(row);
+
+        // Combobox chọn ca
+        JComboBox<CaLamViec> cboSua = new JComboBox<>();
+        cboSua.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(
+                    JList<?> list, Object value, int idx, boolean sel, boolean foc) {
+                super.getListCellRendererComponent(list, value, idx, sel, foc);
+                if (value instanceof CaLamViec) {
+                    CaLamViec c = (CaLamViec) value;
+                    String bd = c.getGioBatDau()  != null ? c.getGioBatDau().toString().substring(0,5)  : "?";
+                    String kt = c.getGioKetThuc() != null ? c.getGioKetThuc().toString().substring(0,5) : "?";
+                    setText(c.getMaCa() + " – " + c.getTenCa() + " (" + bd + "–" + kt + ")");
+                }
+                return this;
+            }
+        });
+        List<CaLamViec> dsCa = caDAO.findAll();
+        CaLamViec caHienTai = null;
+        for (CaLamViec c : dsCa) {
+            cboSua.addItem(c);
+            if (c.getMaCa().equals(lich.getMaCa())) caHienTai = c;
+        }
+        if (caHienTai != null) cboSua.setSelectedItem(caHienTai);
+
+        // Spinner ngày
+        SpinnerDateModel dateModel = new SpinnerDateModel();
+        JSpinner spNgaySua = new JSpinner(dateModel);
+        spNgaySua.setEditor(new JSpinner.DateEditor(spNgaySua, "dd/MM/yyyy"));
+        spNgaySua.setValue(lich.getNgayLamViec());
+
+        JPanel form = new JPanel(new GridLayout(3, 2, 8, 10));
+        form.setBorder(new EmptyBorder(10, 10, 10, 10));
+        form.add(new JLabel("Mã lịch:"));     form.add(new JLabel(lich.getMaLich()));
+        form.add(new JLabel("Mã NV:"));       form.add(new JLabel(lich.getMaNV()));
+        form.add(new JLabel("Ca làm việc:")); form.add(cboSua);
+        // Thêm dòng ngày bằng panel riêng để layout đẹp hơn
+        JPanel wrap = new JPanel(new BorderLayout(10, 10));
+        wrap.add(form, BorderLayout.NORTH);
+        JPanel ngayRow = new JPanel(new BorderLayout(8, 0));
+        ngayRow.setBorder(new EmptyBorder(0, 10, 10, 10));
+        ngayRow.add(new JLabel("Ngày làm việc:"), BorderLayout.WEST);
+        ngayRow.add(spNgaySua, BorderLayout.CENTER);
+        wrap.add(ngayRow, BorderLayout.CENTER);
+
+        int r = JOptionPane.showConfirmDialog(this, wrap, "Sửa lịch đã xếp",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r != JOptionPane.OK_OPTION) return;
+
+        CaLamViec caChon = (CaLamViec) cboSua.getSelectedItem();
+        if (caChon == null) { showError("Vui lòng chọn ca làm việc."); return; }
+
+        java.util.Date ngayMoi = (java.util.Date) spNgaySua.getValue();
+        lich.setMaCa(caChon.getMaCa());
+        lich.setNgayLamViec(new java.sql.Date(ngayMoi.getTime()));
+
+        String err = service.suaLich(lich);
+        if (err == null) { showSuccess("Đã cập nhật lịch."); loadLichDaXep(); loadStatBar(); }
+        else showError(err);
+    }
+
+    /** Xóa lịch đã chọn. */
+    private void xoaLichDaXep() {
+        int row = tblLichDaXep.getSelectedRow();
+        if (row < 0) { showError("Vui lòng chọn một dòng lịch để xóa."); return; }
+        LichPhanCa lich = dsLichDaXep.get(row);
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Xóa lịch " + lich.getMaLich() + " (NV " + lich.getMaNV() + ")?",
+                "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        String err = service.xoaLich(lich.getMaLich());
+        if (err == null) { showSuccess("Đã xóa lịch."); loadLichDaXep(); loadStatBar(); }
+        else showError(err);
     }
 
     /** Tải lịch đã xếp tháng hiện tại vào bảng bên phải. */
@@ -341,9 +440,10 @@ public class ManagerFrame extends BaseFrame {
             }
             @Override protected void done() {
                 try {
+                    dsLichDaXep = get();
                     lichDaXepModel.setRowCount(0);
                     SimpleDateFormat fmt = new SimpleDateFormat("dd/MM/yyyy");
-                    for (LichPhanCa l : get()) {
+                    for (LichPhanCa l : dsLichDaXep) {
                         lichDaXepModel.addRow(new Object[]{
                                 l.getMaLich(), l.getMaNV(), l.getMaCa(),
                                 fmt.format(l.getNgayLamViec()),

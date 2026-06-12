@@ -445,8 +445,16 @@ public abstract class BaseFrame extends JFrame {
     }
 
     /**
-     * Gọi sau khi tab vai trò thay đổi. Subclass override nếu cần load data.
+     * Cho phép subclass khóa (hoặc mở) một tab vai trò cụ thể sau khi initRoleTabs.
+     * Dùng khi 1 vai trò không được phép truy cập tab thấp hơn
+     * (ví dụ: Quản lý không được vào tab "Nhân viên").
      */
+    protected void setRoleTabEnabled(int roleTabIndex, boolean enabled) {
+        roleTabs.setEnabledAt(roleTabIndex, enabled);
+        updateTabColors(roleTabs);
+    }
+
+    /** Hook cho subclass. */
     protected void onRoleTabChanged(int newRoleTabIndex) { }
 
     /**

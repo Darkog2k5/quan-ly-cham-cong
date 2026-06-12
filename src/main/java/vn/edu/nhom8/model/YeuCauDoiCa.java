@@ -10,19 +10,29 @@ public class YeuCauDoiCa {
     private String maYeuCau;
     private String maLichGoc;
     private String maNVTarget;
+    private String maLichTarget; // NULL = nhờ làm giúp; có giá trị = đổi ca cho nhau (ca cụ thể của NV target)
     private String lyDo;
     private String trangThai;
     private Timestamp ngayTao;
 
     public YeuCauDoiCa() {}
 
-    public YeuCauDoiCa(String maYeuCau, String maLichGoc, String maNVTarget, String lyDo, String trangThai, Timestamp ngayTao) {
+    /** Constructor đầy đủ (có maLichTarget). */
+    public YeuCauDoiCa(String maYeuCau, String maLichGoc, String maNVTarget, String maLichTarget,
+                        String lyDo, String trangThai, Timestamp ngayTao) {
         this.maYeuCau = maYeuCau;
         this.maLichGoc = maLichGoc;
         this.maNVTarget = maNVTarget;
+        this.maLichTarget = maLichTarget;
         this.lyDo = lyDo;
         this.trangThai = trangThai;
         this.ngayTao = ngayTao;
+    }
+
+    /** Constructor cũ (không có maLichTarget) - giữ để tương thích code cũ, maLichTarget = null. */
+    public YeuCauDoiCa(String maYeuCau, String maLichGoc, String maNVTarget,
+                        String lyDo, String trangThai, Timestamp ngayTao) {
+        this(maYeuCau, maLichGoc, maNVTarget, null, lyDo, trangThai, ngayTao);
     }
 
     public String getMaYeuCau() { return maYeuCau; }
@@ -33,6 +43,9 @@ public class YeuCauDoiCa {
 
     public String getMaNVTarget() { return maNVTarget; }
     public void setMaNVTarget(String maNVTarget) { this.maNVTarget = maNVTarget; }
+
+    public String getMaLichTarget() { return maLichTarget; }
+    public void setMaLichTarget(String maLichTarget) { this.maLichTarget = maLichTarget; }
 
     public String getLyDo() { return lyDo; }
     public void setLyDo(String lyDo) { this.lyDo = lyDo; }

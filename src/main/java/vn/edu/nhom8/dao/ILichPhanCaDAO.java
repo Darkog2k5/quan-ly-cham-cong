@@ -16,6 +16,8 @@ import java.util.List;
 public interface ILichPhanCaDAO {
     boolean insert(LichPhanCa lpc);
     boolean update(LichPhanCa lpc);
+    boolean updateFull(LichPhanCa lpc);
+    boolean delete(String maLich);
     LichPhanCa findById(String maLich);
     List<LichPhanCa> findAll();
 }

@@ -76,4 +76,34 @@ public class LichPhanCaDAO implements ILichPhanCaDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
+
+    // ── Update đầy đủ (NV, ca, ngày, trạng thái) – dùng cho Sửa lịch ─────────
+    @Override
+    public boolean updateFull(LichPhanCa lpc) {
+        String sql = "{CALL sp_UpdateLichPhanCaFull(?, ?, ?, ?, ?)}";
+        try (Connection con = new DBConnection().getConnection();
+             CallableStatement cs = con.prepareCall(sql)) {
+            cs.setString(1, lpc.getMaLich());
+            cs.setString(2, lpc.getMaNV());
+            cs.setString(3, lpc.getMaCa());
+            cs.setDate(4, lpc.getNgayLamViec());
+            cs.setString(5, lpc.getTrangThai());
+            cs.executeUpdate();
+            return true;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+    @Override
+    public boolean delete(String maLich) {
+        String sql = "{CALL sp_DeleteLichPhanCa(?)}";
+        try (Connection con = new DBConnection().getConnection();
+             CallableStatement cs = con.prepareCall(sql)) {
+            cs.setString(1, maLich);
+            cs.executeUpdate();
+            return true;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
 }

@@ -70,6 +70,24 @@ public class StaffService {
         return ds;
     }
 
+    /**
+     * Lấy danh sách ca từ hôm nay trở đi của MỘT NV KHÁC (dùng để chọn ca muốn
+     * đổi lấy của người được nhờ). Trả về list rỗng nếu maNV không hợp lệ
+     * hoặc không có ca nào trong tương lai.
+     */
+    public List<LichPhanCa> getCaTuongLaiCuaNV(String maNV) {
+        if (maNV == null || maNV.trim().isEmpty()) return new java.util.ArrayList<>();
+        String target = maNV.trim();
+        Date homNay = new Date(System.currentTimeMillis());
+        List<LichPhanCa> ds = lichDAO.findAll();
+        ds.removeIf(l ->
+            !target.equals(l.getMaNV())
+            || !"DaPhan".equals(l.getTrangThai())
+            || l.getNgayLamViec().before(homNay)
+        );
+        return ds;
+    }
+
     // ── Chấm công ─────────────────────────────────────────────────────────
 
     /** Check-in cho maLich đã cho. Trả message để hiện lên UI. */
@@ -106,9 +124,19 @@ public class StaffService {
 
     /**
      * Gửi yêu cầu đổi ca.
+     *
+     * @param maNV         NV gửi yêu cầu (NV1)
+     * @param maLich       Ca của NV1 muốn đổi / nhờ làm giúp
+     * @param maNVTarget   Mã NV được nhờ / đổi cùng (NV2). Có thể để trống.
+     * @param maLichTarget Ca cụ thể của NV2 muốn đổi lấy.
+     *                      - Để trống  -> TH "nhờ làm giúp": ca của NV1 sẽ chuyển hẳn cho NV2.
+     *                      - Có giá trị -> TH "đổi ca cho nhau": hoán đổi ca của NV1 với ca này của NV2
+     *                        (có thể khác ca, khác ngày so với ca gốc).
+     * @param lyDo         Lý do đổi ca.
      * Trả null nếu thành công, trả message lỗi nếu không hợp lệ.
      */
-    public String guiYeuCauDoiCa(String maNV, String maLich, String maNVTarget, String lyDo) {
+    public String guiYeuCauDoiCa(String maNV, String maLich, String maNVTarget,
+                                  String maLichTarget, String lyDo) {
         if (lyDo == null || lyDo.trim().isEmpty()) return "Vui lòng nhập lý do.";
         if (maLich == null) return "Vui lòng chọn ca cần đổi.";
 
@@ -118,9 +146,36 @@ public class StaffService {
         if (lich.getNgayLamViec().before(new Date(System.currentTimeMillis())))
             return "Chỉ được đổi ca trong tương lai.";
 
-        // Không được gửi 2 yêu cầu cho cùng 1 ca
+        String nvTarget = (maNVTarget == null || maNVTarget.trim().isEmpty()) ? null : maNVTarget.trim();
+        String lichTarget = (maLichTarget == null || maLichTarget.trim().isEmpty()) ? null : maLichTarget.trim();
+
+        if (nvTarget != null && nvTarget.equals(lich.getMaNV()))
+            return "Không thể đổi ca với chính mình.";
+
+        // Nếu chọn đổi lấy 1 ca cụ thể của NV target -> kiểm tra hợp lệ
+        if (lichTarget != null) {
+            if (nvTarget == null) return "Vui lòng nhập mã NV đổi cùng.";
+
+            LichPhanCa lt = lichDAO.findById(lichTarget);
+            if (lt == null) return "Không tìm thấy ca muốn đổi của NV đối phương.";
+            if (!"DaPhan".equals(lt.getTrangThai())) return "Ca đối phương không còn hợp lệ để đổi.";
+            if (!nvTarget.equals(lt.getMaNV())) return "Ca được chọn không thuộc nhân viên đã nhập.";
+            if (lichTarget.equals(maLich)) return "Không thể đổi ca với chính ca này.";
+            if (lt.getNgayLamViec().before(new Date(System.currentTimeMillis())))
+                return "Ca muốn đổi của đối phương phải là ca trong tương lai.";
+
+            // Ca đối phương không được đang có yêu cầu đổi khác chờ duyệt
+            for (YeuCauDoiCa y : ycDAO.findAll()) {
+                if (!"ChoDuyet".equals(y.getTrangThai())) continue;
+                if (lichTarget.equals(y.getMaLichGoc()) || lichTarget.equals(y.getMaLichTarget()))
+                    return "Ca đó của đối phương đã có yêu cầu đổi đang chờ duyệt.";
+            }
+        }
+
+        // Không được gửi 2 yêu cầu cho cùng 1 ca gốc (cả khi ca đó đang là maLichTarget của 1 YC khác)
         for (YeuCauDoiCa yc : ycDAO.findAll()) {
-            if (maLich.equals(yc.getMaLichGoc()) && "ChoDuyet".equals(yc.getTrangThai()))
+            if (!"ChoDuyet".equals(yc.getTrangThai())) continue;
+            if (maLich.equals(yc.getMaLichGoc()) || maLich.equals(yc.getMaLichTarget()))
                 return "Ca này đã có yêu cầu đổi đang chờ duyệt.";
         }
 
@@ -128,7 +183,8 @@ public class StaffService {
         String maYC = "YC" + new SimpleDateFormat("yyyyMMddHHmmss").format(new java.util.Date());
         YeuCauDoiCa yc = new YeuCauDoiCa(
                 maYC, maLich,
-                (maNVTarget == null || maNVTarget.trim().isEmpty()) ? null : maNVTarget.trim(),
+                nvTarget,
+                lichTarget,
                 lyDo.trim(),
                 "ChoDuyet",
                 new Timestamp(System.currentTimeMillis())

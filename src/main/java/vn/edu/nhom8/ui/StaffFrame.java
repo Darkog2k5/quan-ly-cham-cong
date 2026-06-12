@@ -52,6 +52,7 @@ public class StaffFrame extends BaseFrame {
     private JPanel            calGrid;
     private int               calNam, calThang;
     private JComboBox<LichPhanCa> cboCaTuongLai;
+    private JComboBox<LichPhanCa> cboLichTarget;
     private DefaultTableModel     ycModel;
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -313,6 +314,57 @@ public class StaffFrame extends BaseFrame {
         txtNVNhan.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER), new EmptyBorder(4, 8, 4, 8)));
 
+        // Combobox: ca cụ thể của NV được nhờ muốn đổi lấy
+        // (null/không chọn => trường hợp "nhờ làm giúp", chỉ chuyển ca chứ không đổi lại)
+        cboLichTarget = new JComboBox<>();
+        cboLichTarget.setFont(UITheme.FONT_BODY);
+        cboLichTarget.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        cboLichTarget.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cboLichTarget.setEnabled(false);
+        cboLichTarget.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(
+                    JList<?> l, Object v, int i, boolean s, boolean f) {
+                super.getListCellRendererComponent(l, v, i, s, f);
+                if (v instanceof LichPhanCa) {
+                    LichPhanCa lp = (LichPhanCa) v;
+                    String ngay = new SimpleDateFormat("dd/MM").format(lp.getNgayLamViec());
+                    setText("Ca " + lp.getMaCa() + "  –  " + ngay);
+                } else {
+                    setText("— Không đổi lấy ca (chỉ nhờ làm giúp) —");
+                }
+                return this;
+            }
+        });
+
+        JButton btnTaiCaNV = actionBtn("🔍  Xem ca của NV", new Color(71, 85, 105));
+        btnTaiCaNV.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnTaiCaNV.addActionListener(e -> {
+            String maNVTarget = txtNVNhan.getText().trim();
+            cboLichTarget.removeAllItems();
+            cboLichTarget.addItem(null); // tuỳ chọn "không đổi lấy ca" luôn có sẵn
+            if (maNVTarget.isEmpty()) {
+                cboLichTarget.setEnabled(false);
+                showError("Vui lòng nhập mã NV đổi cùng trước.");
+                return;
+            }
+            new SwingWorker<List<LichPhanCa>, Void>() {
+                @Override protected List<LichPhanCa> doInBackground() {
+                    return service.getCaTuongLaiCuaNV(maNVTarget);
+                }
+                @Override protected void done() {
+                    try {
+                        List<LichPhanCa> list = get();
+                        for (LichPhanCa lp : list) cboLichTarget.addItem(lp);
+                        cboLichTarget.setEnabled(true);
+                        if (list.isEmpty()) {
+                            showError("NV " + maNVTarget + " không có ca nào trong tương lai.\n"
+                                    + "Bạn vẫn có thể gửi yêu cầu \"nhờ làm giúp\" (để trống lựa chọn đổi lấy ca).");
+                        }
+                    } catch (Exception ex) { ex.printStackTrace(); }
+                }
+            }.execute();
+        });
+
         JTextArea txtLyDo = new JTextArea(3, 20);
         txtLyDo.setFont(UITheme.FONT_BODY); txtLyDo.setLineWrap(true); txtLyDo.setWrapStyleWord(true);
         txtLyDo.setBorder(BorderFactory.createCompoundBorder(
@@ -328,13 +380,20 @@ public class StaffFrame extends BaseFrame {
             if (nv == null) return;
             Object sel = cboCaTuongLai.getSelectedItem();
             String maLich = (sel instanceof LichPhanCa) ? ((LichPhanCa) sel).getMaLich() : null;
+
+            Object selTarget = cboLichTarget.getSelectedItem();
+            String maLichTarget = (selTarget instanceof LichPhanCa) ? ((LichPhanCa) selTarget).getMaLich() : null;
+
             String err = service.guiYeuCauDoiCa(
                     nv.getMaNV(), maLich,
                     txtNVNhan.getText().trim(),
+                    maLichTarget,
                     txtLyDo.getText().trim());
             if (err == null) {
                 showSuccess("Gửi yêu cầu thành công!\nVui lòng chờ Quản lý duyệt.");
                 txtLyDo.setText(""); txtNVNhan.setText("");
+                cboLichTarget.removeAllItems();
+                cboLichTarget.setEnabled(false);
                 loadYeuCauHistory();
             } else {
                 showError(err);
@@ -344,15 +403,18 @@ public class StaffFrame extends BaseFrame {
         body.add(hint);                                  body.add(Box.createVerticalStrut(10));
         body.add(fLabel("Ca cần đổi *"));               body.add(Box.createVerticalStrut(4));
         body.add(cboCaTuongLai);                         body.add(Box.createVerticalStrut(10));
-        body.add(fLabel("Mã NV đổi cùng (tuỳ chọn)")); body.add(Box.createVerticalStrut(4));
-        body.add(txtNVNhan);                             body.add(Box.createVerticalStrut(10));
+        body.add(fLabel("Mã NV đổi cùng / nhờ giúp (tuỳ chọn)")); body.add(Box.createVerticalStrut(4));
+        body.add(txtNVNhan);                             body.add(Box.createVerticalStrut(6));
+        body.add(btnTaiCaNV);                            body.add(Box.createVerticalStrut(10));
+        body.add(fLabel("Đổi lấy ca nào của NV đó? (để trống = nhờ làm giúp)")); body.add(Box.createVerticalStrut(4));
+        body.add(cboLichTarget);                         body.add(Box.createVerticalStrut(10));
         body.add(fLabel("Lý do *"));                    body.add(Box.createVerticalStrut(4));
         body.add(scrollLyDo);                            body.add(Box.createVerticalStrut(14));
         body.add(btnGui);
         formCard.add(body, BorderLayout.CENTER);
 
         JPanel histCard = createCard("Lịch sử yêu cầu đổi ca");
-        String[] cols = {"Mã YC", "Mã ca", "NV đổi cùng", "Trạng thái", "Ngày tạo"};
+        String[] cols = {"Mã YC", "Mã ca", "NV đổi cùng", "Đổi lấy ca", "Trạng thái", "Ngày tạo"};
         JTable tbl = createTable(cols);
         ycModel = (DefaultTableModel) tbl.getModel();
         JScrollPane sp = new JScrollPane(tbl);
@@ -520,6 +582,7 @@ public class StaffFrame extends BaseFrame {
                                 yc.getMaYeuCau(),
                                 yc.getMaLichGoc(),
                                 yc.getMaNVTarget() != null ? yc.getMaNVTarget() : "—",
+                                yc.getMaLichTarget() != null ? yc.getMaLichTarget() : "—",
                                 trangThaiLabel(yc.getTrangThai()),
                                 yc.getNgayTao() != null ? fmt.format(yc.getNgayTao()) : "—"
                         });
