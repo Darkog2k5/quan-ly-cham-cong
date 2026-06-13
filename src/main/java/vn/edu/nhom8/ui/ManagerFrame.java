@@ -13,6 +13,9 @@ import vn.edu.nhom8.service.ManagerService;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+
 import java.awt.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -81,10 +84,11 @@ public class ManagerFrame extends BaseFrame {
         if (roleTabIndex != ROLE_TAB_MANAGER) return null;
         JPanel tb = createToolbarPanel();
 
-        JButton btnXep   = toolbarBtn("📅", "Xếp lịch");
-        JButton btnDuyet = toolbarBtn("✅", "Duyệt đổi ca");
-        JButton btnLich  = toolbarBtn("📊", "Lịch tổng");
-        JButton btnLamMoi = toolbarBtn("🔃", "Làm mới");
+        JButton btnXep   = toolbarBtn(FontAwesomeSolid.CALENDAR_PLUS, "Xếp lịch");
+        JButton btnDuyet = toolbarBtn(FontAwesomeSolid.CHECK_SQUARE, "Duyệt đổi ca");
+        JButton btnLich  = toolbarBtn(FontAwesomeSolid.CALENDAR_ALT, "Lịch tổng");
+        JButton btnBaoCao = toolbarBtn(FontAwesomeSolid.FILE_EXCEL, "Báo cáo");
+        JButton btnLamMoi = toolbarBtn(FontAwesomeSolid.SYNC, "Làm mới");
 
         btnXep.addActionListener(e    -> tabs.setSelectedIndex(TAB_XEPLICH));
         btnDuyet.addActionListener(e  -> tabs.setSelectedIndex(TAB_DUYET));
@@ -108,9 +112,9 @@ public class ManagerFrame extends BaseFrame {
 
         tabs = new JTabbedPane(JTabbedPane.TOP);
         tabs.setFont(UITheme.FONT_BODY);
-        tabs.addTab("📅  Xếp lịch",    buildXepLichTab());
-        tabs.addTab("✅  Duyệt đổi ca", buildDuyetTab());
-        tabs.addTab("📊  Lịch tổng",    buildLichTongTab());
+        tabs.addTab("Xếp lịch",    buildXepLichTab());
+        tabs.addTab("Duyệt đổi ca", buildDuyetTab());
+        tabs.addTab("Lịch tổng",    buildLichTongTab());
 
         tabs.addChangeListener(e -> {
             if (tabs.getSelectedIndex() == TAB_DUYET)    loadYeuCauChoDuyet();
@@ -127,9 +131,9 @@ public class ManagerFrame extends BaseFrame {
         bar.setOpaque(false);
         bar.setBorder(new EmptyBorder(0, 0, 14, 0));
         // Placeholder – loadStatBar() sẽ điền số thật
-        bar.add(statCard("👥  Nhân viên", "—", UITheme.BLUE));
-        bar.add(statCard("🔄  Chờ duyệt đổi ca", "—", UITheme.AMBER));
-        bar.add(statCard("📅  Ca hôm nay", "—", UITheme.GREEN));
+        bar.add(statCard("Nhân viên", "—", UITheme.BLUE));
+        bar.add(statCard("Chờ duyệt đổi ca", "—", UITheme.AMBER));
+        bar.add(statCard("Ca hôm nay", "—", UITheme.GREEN));
         return bar;
     }
 
@@ -192,7 +196,7 @@ public class ManagerFrame extends BaseFrame {
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
         // ── Form xếp lịch ──────────────────────────────────────────────────────
-        JPanel formCard = createCard("📅  Xếp lịch cho nhân viên");
+        JPanel formCard = createCard("Xếp lịch cho nhân viên");
         JPanel body = new JPanel(); body.setOpaque(false);
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
@@ -274,7 +278,7 @@ public class ManagerFrame extends BaseFrame {
         btnChon.add(btnAll); btnChon.add(btnNone);
 
         // Nút Lưu lịch
-        JButton btnLuu = actionBtn("💾  Lưu lịch", UITheme.GREEN);
+        JButton btnLuu = actionBtn("Lưu lịch", FontAwesomeSolid.SAVE, UITheme.GREEN);
         btnLuu.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnLuu.addActionListener(e -> {
             // Lấy danh sách NV được tick
@@ -297,7 +301,7 @@ public class ManagerFrame extends BaseFrame {
 
             String msg = "Đã xếp lịch thành công cho " + soOK + " nhân viên.";
             if (!trungCa.isEmpty()) {
-                msg += "\n\n⚠️ Bị trùng ca (bỏ qua): " + String.join(", ", trungCa);
+                msg += "\n\nBị trùng ca (bỏ qua): " + String.join(", ", trungCa);
             }
 
             if (soOK > 0) { showSuccess(msg); loadLichDaXep(); loadStatBar(); }
@@ -317,10 +321,10 @@ public class ManagerFrame extends BaseFrame {
         formCard.add(body, BorderLayout.CENTER);
 
         // ── Bảng lịch đã xếp ──────────────────────────────────────────────────
-        JPanel rightCard = createCard("📋  Lịch đã xếp tháng này");
+        JPanel rightCard = createCard("Lịch đã xếp tháng này");
 
         JPanel rightHeader = new JPanel(new BorderLayout()); rightHeader.setOpaque(false);
-        JButton btnRefresh = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
+        JButton btnRefresh = actionBtn("Làm mới", new Color(71, 85, 105));
         btnRefresh.addActionListener(e -> loadLichDaXep());
         rightHeader.add(btnRefresh, BorderLayout.EAST);
         rightCard.add(rightHeader, BorderLayout.NORTH);
@@ -335,8 +339,8 @@ public class ManagerFrame extends BaseFrame {
 
         // Nút Sửa / Xóa lịch đã xếp
         JPanel actRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8)); actRow.setOpaque(false);
-        JButton btnSua = actionBtn("✏️  Sửa",  UITheme.BLUE);
-        JButton btnXoa = actionBtn("🗑️  Xóa",  UITheme.RED);
+        JButton btnSua = actionBtn("Sửa",  UITheme.BLUE);
+        JButton btnXoa = actionBtn("Xóa",  UITheme.RED);
         JLabel hintXep = new JLabel("← Chọn một hàng rồi nhấn nút");
         hintXep.setFont(UITheme.FONT_SMALL); hintXep.setForeground(UITheme.MUTED);
 
@@ -464,8 +468,8 @@ public class ManagerFrame extends BaseFrame {
 
         // Tiêu đề + nút làm mới
         JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
-        JLabel title = new JLabel("✅  Yêu cầu đổi ca đang chờ duyệt"); title.setFont(UITheme.FONT_HEAD);
-        JButton btnLamMoi = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
+        JLabel title = new JLabel("Yêu cầu đổi ca đang chờ duyệt"); title.setFont(UITheme.FONT_HEAD);
+        JButton btnLamMoi = actionBtn("Làm mới", new Color(71, 85, 105));
         btnLamMoi.addActionListener(e -> loadYeuCauChoDuyet());
         header.add(title, BorderLayout.WEST); header.add(btnLamMoi, BorderLayout.EAST);
         panel.add(header, BorderLayout.NORTH);
@@ -480,8 +484,8 @@ public class ManagerFrame extends BaseFrame {
 
         // Nút Duyệt / Từ chối
         JPanel actRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5)); actRow.setOpaque(false);
-        JButton btnDuyet  = actionBtn("✅  Duyệt",   UITheme.GREEN);
-        JButton btnTuChoi = actionBtn("❌  Từ chối", UITheme.RED);
+        JButton btnDuyet = actionBtn("Duyệt", FontAwesomeSolid.CHECK, UITheme.GREEN);
+        JButton btnTuChoi = actionBtn("Từ chối", FontAwesomeSolid.TIMES, UITheme.RED);
         JLabel hint = new JLabel("← Chọn một hàng rồi nhấn nút");
         hint.setFont(UITheme.FONT_SMALL); hint.setForeground(UITheme.MUTED);
 

@@ -10,6 +10,7 @@ import vn.edu.nhom8.model.YeuCauDoiCa;
 import vn.edu.nhom8.service.StaffService;
 import vn.edu.nhom8.util.SessionManager;
 
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -85,11 +86,11 @@ public class StaffFrame extends BaseFrame {
 
         JPanel tb = createToolbarPanel();
 
-        JButton btnCi     = toolbarBtn("⏱", "Check-in");
-        JButton btnCo     = toolbarBtn("🏁", "Check-out");
-        JButton btnLich   = toolbarBtn("📅", "Xem ca làm");
-        JButton btnDoi    = toolbarBtn("🔄", "Đổi ca");
-        JButton btnLamMoi = toolbarBtn("🔃", "Làm mới");
+        JButton btnCi     = toolbarBtn(FontAwesomeSolid.CLOCK, "Check-in");
+        JButton btnCo     = toolbarBtn(FontAwesomeSolid.SIGN_OUT_ALT, "Check-out");
+        JButton btnLich   = toolbarBtn(FontAwesomeSolid.CALENDAR_ALT, "Xem ca làm");
+        JButton btnDoi    = toolbarBtn(FontAwesomeSolid.EXCHANGE_ALT, "Đổi ca");
+        JButton btnLamMoi = toolbarBtn(FontAwesomeSolid.SYNC, "Làm mới");
 
         btnCi.addActionListener(e     -> { innerTabs.setSelectedIndex(TAB_CHAMCONG); doCheckIn(); });
         btnCo.addActionListener(e     -> { innerTabs.setSelectedIndex(TAB_CHAMCONG); doCheckOut(); });
@@ -113,9 +114,9 @@ public class StaffFrame extends BaseFrame {
 
         innerTabs = new JTabbedPane(JTabbedPane.TOP);
         innerTabs.setFont(UITheme.FONT_BODY);
-        innerTabs.addTab("⏱  Chấm công",   buildChamCongTab());
-        innerTabs.addTab("📅  Lịch ca làm", buildLichCaTab());
-        innerTabs.addTab("🔄  Đổi ca",      buildDoiCaTab());
+        innerTabs.addTab("Chấm công",   buildChamCongTab());
+        innerTabs.addTab("Lịch ca làm", buildLichCaTab());
+        innerTabs.addTab("Đổi ca",      buildDoiCaTab());
 
         innerTabs.addChangeListener(e -> {
             if (innerTabs.getSelectedIndex() == TAB_LICHCA)  loadCalendar();
@@ -164,8 +165,8 @@ public class StaffFrame extends BaseFrame {
         // Card 3: Nút chấm công nhanh
         JPanel card3 = createCard("Chấm công nhanh");
         JPanel btns = new JPanel(new GridLayout(1, 2, 10, 0)); btns.setOpaque(false);
-        btnCheckIn  = actionBtn("CHECK-IN",  UITheme.GREEN);
-        btnCheckOut = actionBtn("CHECK-OUT", UITheme.AMBER);
+        JButton btnCheckIn = actionBtn("CHECK-IN", FontAwesomeSolid.SIGN_IN_ALT, UITheme.GREEN);
+        JButton btnCheckOut = actionBtn("CHECK-OUT", FontAwesomeSolid.SIGN_OUT_ALT, UITheme.AMBER);
         btnCheckOut.setEnabled(false);
         btnCheckIn.addActionListener(e  -> doCheckIn());
         btnCheckOut.addActionListener(e -> doCheckOut());
@@ -207,7 +208,7 @@ public class StaffFrame extends BaseFrame {
 
         JPanel header = new JPanel(new BorderLayout()); header.setOpaque(false);
         JLabel title = new JLabel("Lịch sử chấm công"); title.setFont(UITheme.FONT_HEAD);
-        JButton btnLamMoi = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
+        JButton btnLamMoi = actionBtn("Làm mới", new Color(71, 85, 105));
         btnLamMoi.addActionListener(e -> loadLichSuChamCong());
         header.add(title, BorderLayout.WEST);
         header.add(btnLamMoi, BorderLayout.EAST);
@@ -373,7 +374,7 @@ public class StaffFrame extends BaseFrame {
         scrollLyDo.setAlignmentX(Component.LEFT_ALIGNMENT);
         scrollLyDo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
 
-        JButton btnGui = actionBtn("📨  Gửi yêu cầu", UITheme.BLUE);
+        JButton btnGui = actionBtn("Gửi yêu cầu", FontAwesomeSolid.PAPER_PLANE, UITheme.BLUE);
         btnGui.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnGui.addActionListener(e -> {
             NhanVien nv = SessionManager.getInstance().getCurrentUser();
@@ -536,9 +537,9 @@ public class StaffFrame extends BaseFrame {
                 cell.addMouseListener(new java.awt.event.MouseAdapter() {
                     @Override public void mouseClicked(java.awt.event.MouseEvent e) {
                         JOptionPane.showMessageDialog(StaffFrame.this,
-                                "📅 Ngày: " + day + "/" + calThang + "/" + calNam
-                                + "\n⏰ Mã ca: " + finalLp.getMaCa()
-                                + "\n📊 Trạng thái: " + trangThaiLabel(finalLp.getTrangThai()),
+                                "Ngày: " + day + "/" + calThang + "/" + calNam
+                                + "\nMã ca: " + finalLp.getMaCa()
+                                + "\nTrạng thái: " + trangThaiLabel(finalLp.getTrangThai()),
                                 "Chi tiết ca", JOptionPane.INFORMATION_MESSAGE);
                     }
                 });
@@ -606,7 +607,7 @@ public class StaffFrame extends BaseFrame {
         String now = new SimpleDateFormat("HH:mm:ss").format(new Date());
         btnCheckIn.setEnabled(false); btnCheckOut.setEnabled(true);
         lblStatus.setText("Đang trong ca  (" + now + ")"); lblStatus.setForeground(UITheme.GREEN);
-        showSuccess("✅ Check-in thành công lúc " + now + "!");
+        showSuccess("Check-in thành công lúc " + now + "!");
         loadLichSuChamCong();
     }
 
@@ -624,7 +625,7 @@ public class StaffFrame extends BaseFrame {
         String now = new SimpleDateFormat("HH:mm:ss").format(new Date());
         btnCheckOut.setEnabled(false);
         lblStatus.setText("Đã hoàn thành ca  (" + now + ")"); lblStatus.setForeground(UITheme.MUTED);
-        showSuccess("🏁 Check-out thành công lúc " + now + "!");
+        showSuccess("Check-out thành công lúc " + now + "!");
         loadLichSuChamCong();
     }
 

@@ -2,6 +2,8 @@ package vn.edu.nhom8.ui;
 
 import vn.edu.nhom8.model.NhanVien;
 import vn.edu.nhom8.util.SessionManager;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.swing.FontIcon;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -158,9 +160,9 @@ public abstract class BaseFrame extends JFrame {
         tp.setForeground(Color.WHITE);
 
         // Thêm 3 tab (nội dung placeholder – subclass sẽ populate roleContentPanels)
-        tp.addTab("👤  Nhân viên",       new JPanel());
-        tp.addTab("📊  Quản lý",          new JPanel());
-        tp.addTab("🛠  Quản trị hệ thống", new JPanel());
+        tp.addTab("Nhân viên", FontIcon.of(FontAwesomeSolid.USER, 14, Color.WHITE), new JPanel());
+        tp.addTab("Quản lý", FontIcon.of(FontAwesomeSolid.CHART_BAR, 14, Color.WHITE), new JPanel());
+        tp.addTab("Quản trị hệ thống", FontIcon.of(FontAwesomeSolid.COGS, 14, Color.WHITE), new JPanel());
 
         // Custom tab UI
         tp.setUI(new javax.swing.plaf.basic.BasicTabbedPaneUI() {
@@ -225,7 +227,7 @@ public abstract class BaseFrame extends JFrame {
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setOpaque(false);
 
-        JLabel lblLogo = new JLabel("⚡");
+        JLabel lblLogo = new JLabel(FontIcon.of(FontAwesomeSolid.BOLT, 22, new Color(251, 191, 36)));
         lblLogo.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
         lblLogo.setForeground(new Color(251, 191, 36));
 
@@ -259,7 +261,7 @@ public abstract class BaseFrame extends JFrame {
         nvInfo.add(lblRole);
 
         // Chuông thông báo
-        JButton btnBell = createIconButton("🔔");
+        JButton btnBell = createIconButton(FontAwesomeSolid.BELL);
         lblBadge = new JLabel("●");
         lblBadge.setFont(new Font("Segoe UI", Font.BOLD, 10));
         lblBadge.setForeground(Color.RED);
@@ -339,9 +341,9 @@ public abstract class BaseFrame extends JFrame {
         miName.setFont(UITheme.FONT_BOLD);
         miName.setEnabled(false);
 
-        JMenuItem miInfo   = menuItem("Đổi thông tin cá nhân", "✏️");
-        JMenuItem miPwd    = menuItem("Đổi mật khẩu", "🔐");
-        JMenuItem miLogout = menuItem("Đăng xuất", "🚪");
+        JMenuItem miInfo   = menuItem("Thông tin cá nhân", FontAwesomeSolid.USER_EDIT);
+        JMenuItem miPwd    = menuItem("Đổi mật khẩu", FontAwesomeSolid.KEY);
+        JMenuItem miLogout = menuItem("Đăng xuất", FontAwesomeSolid.SIGN_OUT_ALT);
         miLogout.setForeground(UITheme.RED);
 
         miInfo.addActionListener(e   -> showDoiThongTin());
@@ -489,81 +491,62 @@ public abstract class BaseFrame extends JFrame {
     //  HELPERS
     // ═════════════════════════════════════════════════════════════════════════
 
-    protected JButton createIconButton(String icon) {
-        JButton btn = new JButton(icon) {
-            private boolean hovered = false;
-            {
-                addMouseListener(new MouseAdapter() {
-                    @Override public void mouseEntered(MouseEvent e) { hovered = true;  repaint(); }
-                    @Override public void mouseExited(MouseEvent e)  { hovered = false; repaint(); }
-                });
-            }
-            @Override
-            protected void paintComponent(Graphics g) {
-                if (hovered) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(new Color(255, 255, 255, 30));
-                    g2.fillOval(1, 1, getWidth() - 2, getHeight() - 2);
-                    g2.dispose();
-                }
-                super.paintComponent(g);
-            }
-        };
-        btn.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+    protected JButton createIconButton(FontAwesomeSolid iconCode) {
+        JButton btn = new JButton(FontIcon.of(iconCode, 18, Color.WHITE));
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
-        btn.setOpaque(false);
-        btn.setForeground(Color.WHITE);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
-    protected JMenuItem menuItem(String text, String icon) {
-        JMenuItem mi = new JMenuItem(icon + "  " + text);
+    protected JMenuItem menuItem(String text, FontAwesomeSolid iconCode) {
+        JMenuItem mi = new JMenuItem(text);
+        if (iconCode != null) mi.setIcon(FontIcon.of(iconCode, 14, UITheme.TEXT2));
         mi.setFont(UITheme.FONT_BODY);
         mi.setBorder(new EmptyBorder(6, 12, 6, 20));
         return mi;
     }
 
     /** Tạo nút Toolbar chuẩn (icon + nhãn) */
-    protected JButton toolbarBtn(String icon, String label) {
-        String display = (icon != null && !icon.isEmpty()) ? icon + "  " + label : label;
-        JButton btn = new JButton(display) {
-            private boolean hovered = false;
-            private boolean pressed = false;
-            {
-                addMouseListener(new MouseAdapter() {
-                    @Override public void mouseEntered(MouseEvent e)  { hovered = true;  repaint(); }
-                    @Override public void mouseExited(MouseEvent e)   { hovered = false; pressed = false; repaint(); }
-                    @Override public void mousePressed(MouseEvent e)  { pressed = true;  repaint(); }
-                    @Override public void mouseReleased(MouseEvent e) { pressed = false; repaint(); }
-                });
-            }
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                if (pressed) {
-                    g2.setColor(new Color(255, 255, 255, 55));
-                    g2.fillRoundRect(2, 4, getWidth() - 4, getHeight() - 8, 8, 8);
-                } else if (hovered) {
-                    g2.setColor(new Color(255, 255, 255, 35));
-                    g2.fillRoundRect(2, 4, getWidth() - 4, getHeight() - 8, 8, 8);
-                }
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
+    protected JButton toolbarBtn(FontAwesomeSolid iconCode, String label) {
+        JButton btn = new JButton(label);
+        if (iconCode != null) {
+            btn.setIcon(FontIcon.of(iconCode, 14, Color.WHITE));
+            btn.setIconTextGap(8);
+        }
         btn.setFont(UITheme.FONT_BODY);
         btn.setForeground(Color.WHITE);
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setOpaque(false);
-        btn.setBorder(new EmptyBorder(6, 10, 6, 10));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    // --- OVERLOAD: Cho phép các file cũ gọi actionBtn mà không bị lỗi đỏ ---
+    protected JButton actionBtn(String text, Color bg) {
+        return actionBtn(text, null, bg);
+    }
+
+    // --- HÀM MỚI: Hỗ trợ Icon Ikonli ---
+    protected JButton actionBtn(String text, FontAwesomeSolid iconCode, Color bg) {
+        Color bgHover = bg.darker();
+        JButton btn = new JButton(text);
+        if (iconCode != null) {
+            btn.setIcon(FontIcon.of(iconCode, 14, Color.WHITE));
+            btn.setIconTextGap(8);
+        }
+        btn.setFont(UITheme.FONT_BOLD);
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(8, 16, 8, 16));
+        btn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(bgHover); }
+            @Override public void mouseExited(MouseEvent e)  { btn.setBackground(bg); }
+        });
         return btn;
     }
 
@@ -649,24 +632,6 @@ public abstract class BaseFrame extends JFrame {
             }
         });
         return table;
-    }
-
-    /** Nút hành động trong card */
-    protected JButton actionBtn(String text, Color bg) {
-        Color bgHover = bg.darker();
-        JButton btn = new JButton(text);
-        btn.setFont(UITheme.FONT_BOLD);
-        btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
-        btn.setBorderPainted(false);
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new EmptyBorder(8, 16, 8, 16));
-        btn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(bgHover); }
-            @Override public void mouseExited(MouseEvent e)  { btn.setBackground(bg); }
-        });
-        return btn;
     }
 
     // ── Backward compat: subclass cũ có buildToolbar() abstract ──────────────

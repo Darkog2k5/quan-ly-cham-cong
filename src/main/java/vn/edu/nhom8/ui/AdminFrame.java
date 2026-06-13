@@ -5,6 +5,7 @@ import vn.edu.nhom8.dao.NhanVienDAO;
 import vn.edu.nhom8.model.CaLamViec;
 import vn.edu.nhom8.model.NhanVien;
 
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -48,19 +49,19 @@ public class AdminFrame extends BaseFrame {
         lblCa.setFont(new Font("Segoe UI", Font.BOLD, 9));
         lblCa.setForeground(new Color(255, 255, 255, 100));
 
-        JButton btnThemCa = toolbarBtn("➕", "Thêm ca");
-        JButton btnSuaCa  = toolbarBtn("✏️", "Sửa ca");
-        JButton btnXoaCa  = toolbarBtn("🗑",  "Xóa ca");
-        JButton btnDsCa   = toolbarBtn("📋", "Xem ds ca");
+        JButton btnThemCa = toolbarBtn(FontAwesomeSolid.PLUS, "Thêm ca");
+        JButton btnSuaCa  = toolbarBtn(FontAwesomeSolid.EDIT, "Sửa ca");
+        JButton btnXoaCa  = toolbarBtn(FontAwesomeSolid.TRASH, "Xóa ca");
+        JButton btnDsCa   = toolbarBtn(FontAwesomeSolid.LIST, "Xem ds ca");
 
         JLabel lblTK = new JLabel("  Quản lý tài khoản  ");
         lblTK.setFont(new Font("Segoe UI", Font.BOLD, 9));
         lblTK.setForeground(new Color(255, 255, 255, 100));
 
-        JButton btnThemTK = toolbarBtn("👤+", "Thêm TK");
-        JButton btnSuaTK  = toolbarBtn("✏️",  "Sửa TK");
-        JButton btnKhoaTK = toolbarBtn("🔒",  "Khóa TK");
-        JButton btnDsTK   = toolbarBtn("👥",  "Ds tài khoản");
+        JButton btnThemTK = toolbarBtn(FontAwesomeSolid.USER_PLUS, "Thêm TK");
+        JButton btnSuaTK  = toolbarBtn(FontAwesomeSolid.USER_EDIT, "Sửa TK");
+        JButton btnKhoaTK = toolbarBtn(FontAwesomeSolid.LOCK, "Khóa TK");
+        JButton btnDsTK   = toolbarBtn(FontAwesomeSolid.USERS, "Ds tài khoản");
 
         btnThemCa.addActionListener(e -> { tabs.setSelectedIndex(0); showFormThemCa(false, -1); });
         btnSuaCa .addActionListener(e -> { tabs.setSelectedIndex(0); suaCaSelected(); });
@@ -86,8 +87,8 @@ public class AdminFrame extends BaseFrame {
     private void buildContent() {
         tabs = new JTabbedPane(JTabbedPane.TOP);
         tabs.setFont(UITheme.FONT_BODY);
-        tabs.addTab("⏰  Cấu hình ca làm",  buildCaLamViecTab());
-        tabs.addTab("👥  Quản lý tài khoản", buildTaiKhoanTab());
+        tabs.addTab("Cấu hình ca làm",  buildCaLamViecTab());
+        tabs.addTab("Quản lý tài khoản", buildTaiKhoanTab());
         getRoleContentPanel(ROLE_TAB_ADMIN).add(tabs, BorderLayout.CENTER);
     }
 
@@ -99,7 +100,7 @@ public class AdminFrame extends BaseFrame {
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
         // ── Form thêm ca
-        JPanel formCard = createCard("⏰  Thêm ca làm việc");
+        JPanel formCard = createCard("Thêm ca làm việc");
         JPanel body = new JPanel();
         body.setOpaque(false);
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -108,8 +109,8 @@ public class AdminFrame extends BaseFrame {
         JSpinner spBD = timeSpinner(7, 0);
         JSpinner spKT = timeSpinner(12, 0);
 
-        JButton btnThem  = actionBtn("➕  Thêm ca",  UITheme.BLUE);
-        JButton btnReset = actionBtn("↺  Làm mới",   new Color(71, 85, 105));
+        JButton btnThem  = actionBtn("Thêm ca",  UITheme.BLUE);
+        JButton btnReset = actionBtn("Làm mới",   new Color(71, 85, 105));
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         btnRow.setOpaque(false);
         btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -155,7 +156,7 @@ public class AdminFrame extends BaseFrame {
         formCard.add(body, BorderLayout.CENTER);
 
         // ── Danh sách ca (load từ DB)
-        JPanel listCard = createCard("📋  Danh sách ca làm việc");
+        JPanel listCard = createCard("Danh sách ca làm việc");
         String[] cols = {"Mã ca", "Tên ca", "Giờ bắt đầu", "Giờ kết thúc"};
         tblCa = createTable(cols);
         caModel = (DefaultTableModel) tblCa.getModel();
@@ -168,8 +169,8 @@ public class AdminFrame extends BaseFrame {
 
         JPanel tblBtnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         tblBtnRow.setOpaque(false);
-        JButton btnSua = actionBtn("✏️  Sửa",  UITheme.BLUE);
-        JButton btnXoa = actionBtn("🗑  Xóa",   UITheme.RED);
+        JButton btnSua = actionBtn("Sửa",  UITheme.BLUE);
+        JButton btnXoa = actionBtn("Xóa",   UITheme.RED);
         btnSua.addActionListener(e -> showFormThemCa(true, tblCa.getSelectedRow()));
         btnXoa.addActionListener(e -> {
             int row = tblCa.getSelectedRow();
@@ -240,15 +241,15 @@ public class AdminFrame extends BaseFrame {
         JTextField txtSearch = inputField();
         txtSearch.setMaximumSize(new Dimension(220, 32));
         txtSearch.setPreferredSize(new Dimension(220, 32));
-        JButton btnSearch = actionBtn("🔍  Tìm", UITheme.BLUE);
+        JButton btnSearch = actionBtn("Tìm", UITheme.BLUE);
         searchRow.add(new JLabel("Tìm kiếm:  "));
         searchRow.add(txtSearch);
         searchRow.add(btnSearch);
 
         JPanel btnRow2 = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btnRow2.setOpaque(false);
-        JButton btnThem = actionBtn("👤+  Thêm tài khoản", UITheme.BLUE);
-        JButton btnLamMoi = actionBtn("🔃  Làm mới", new Color(71, 85, 105));
+        JButton btnThem = actionBtn("Thêm tài khoản", UITheme.BLUE);
+        JButton btnLamMoi = actionBtn("Làm mới", new Color(71, 85, 105));
         btnThem.addActionListener(e -> showFormThemTK(false, -1));
         btnLamMoi.addActionListener(e -> loadDanhSachNV());
         btnRow2.add(btnLamMoi); btnRow2.add(btnThem);
@@ -297,9 +298,9 @@ public class AdminFrame extends BaseFrame {
         // Action bar
         JPanel actRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         actRow.setOpaque(false);
-        JButton btnSua  = actionBtn("✏️  Sửa TK",   UITheme.BLUE);
-        JButton btnKhoa = actionBtn("🔒  Khóa TK",   UITheme.AMBER);
-        JButton btnMo   = actionBtn("🔓  Mở khóa",   UITheme.GREEN);
+        JButton btnSua  = actionBtn("Sửa TK",   UITheme.BLUE);
+        JButton btnKhoa = actionBtn("Khóa TK",   UITheme.AMBER);
+        JButton btnMo   = actionBtn("Mở khóa",   UITheme.GREEN);
         JLabel hint = new JLabel("← Chọn một hàng rồi thao tác");
         hint.setFont(UITheme.FONT_SMALL); hint.setForeground(UITheme.MUTED);
 

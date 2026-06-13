@@ -108,4 +108,43 @@ public class NhanVienDAO implements INhanVienDAO {
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }
+
+    public boolean updateThongTin(String maNV, String hoTenMoi) {
+        String sql = "UPDATE NhanVien SET hoTen = ? WHERE maNV = ?";
+        
+        try (java.sql.Connection conn = new vn.edu.nhom8.util.DBConnection().getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setString(1, hoTenMoi);
+            ps.setString(2, maNV);
+            
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+            
+        } catch (Exception e) {
+            System.out.println("Lỗi SQL khi cập nhật thông tin cá nhân:");
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean updatePassword(String taiKhoan, String newPassword) {
+        String sql = "UPDATE NhanVien SET matKhau = ? WHERE taiKhoan = ?";
+        
+        try (java.sql.Connection conn = new vn.edu.nhom8.util.DBConnection().getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            // LƯU TRỰC TIẾP MẬT KHẨU THÔ (Không dùng BCrypt nữa)
+            ps.setString(1, newPassword); 
+            ps.setString(2, taiKhoan); 
+            
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+            
+        } catch (Exception e) {
+            System.out.println("Lỗi SQL khi đổi mật khẩu:");
+            e.printStackTrace();
+        }
+        return false;
+    }
 }
