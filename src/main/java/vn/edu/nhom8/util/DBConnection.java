@@ -49,6 +49,11 @@ public class DBConnection {
     }
 
     public Connection getConnection() {
+        if (connection == null) {
+            System.out.println("CONNECTION NULL");
+        } else {
+            System.out.println("CONNECTED OK");
+        }
         return connection;
     }
 }
