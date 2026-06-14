@@ -1,16 +1,21 @@
 package vn.edu.nhom8.service;
 
+import vn.edu.nhom8.dao.ChamCongDAO;
 import vn.edu.nhom8.dao.ILichPhanCaDAO;
 import vn.edu.nhom8.dao.INhanVienDAO;
 import vn.edu.nhom8.dao.IYeuCauDoiCaDAO;
+import vn.edu.nhom8.model.ChamCong;
 import vn.edu.nhom8.model.LichPhanCa;
 import vn.edu.nhom8.model.NhanVien;
 import vn.edu.nhom8.model.YeuCauDoiCa;
 
 import java.sql.Date;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Business logic cho màn hình Quản lý (F3.1 – F3.3).
@@ -21,13 +26,15 @@ public class ManagerService {
     private final ILichPhanCaDAO  lichDAO;
     private final INhanVienDAO    nvDAO;
     private final IYeuCauDoiCaDAO ycDAO;
+    private final ChamCongDAO     chamCongDAO;
 
     public ManagerService(ILichPhanCaDAO lichDAO,
                           INhanVienDAO nvDAO,
                           IYeuCauDoiCaDAO ycDAO) {
-        this.lichDAO = lichDAO;
-        this.nvDAO   = nvDAO;
-        this.ycDAO   = ycDAO;
+        this.lichDAO      = lichDAO;
+        this.nvDAO        = nvDAO;
+        this.ycDAO        = ycDAO;
+        this.chamCongDAO  = new ChamCongDAO();
     }
 
     // ── F3.1: Xếp lịch ────────────────────────────────────────────────────
@@ -178,5 +185,88 @@ public class ManagerService {
             l.getNgayLamViec().before(tuNgay) || l.getNgayLamViec().after(denNgay)
         );
         return ds;
+    }
+
+    // ── F3.4: Báo cáo chấm công ──────────────────────────────────────────
+
+    /**
+     * Lấy dữ liệu báo cáo chấm công theo tháng/năm và (tuỳ chọn) mã NV.
+     * Mỗi phần tử trả về là Object[] gồm:
+     *   [0] maNV  [1] hoTen  [2] ngayLamViec  [3] maCa
+     *   [4] gioVao  [5] gioRa  [6] trangThaiCC  [7] soGioLam
+     *
+     * @param thang    1-12
+     * @param nam      năm dương lịch
+     * @param maNVFilter null = tất cả NV, khác = lọc một NV cụ thể
+     */
+    public List<Object[]> getBaoCaoChamCong(int thang, int nam, String maNVFilter) {
+        SimpleDateFormat fmtDate = new SimpleDateFormat("dd/MM/yyyy");
+        SimpleDateFormat fmtTime = new SimpleDateFormat("HH:mm");
+
+        // Build map maNV → hoTen
+        Map<String, String> nvMap = nvDAO.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        NhanVien::getMaNV,
+                        nv -> nv.getHoTen() != null ? nv.getHoTen() : nv.getMaNV(),
+                        (a, b) -> a));
+
+        // Lọc lịch phân ca theo tháng
+        List<LichPhanCa> lichs = lichDAO.findAll();
+        lichs.removeIf(l -> {
+            Calendar c = Calendar.getInstance();
+            c.setTime(l.getNgayLamViec());
+            boolean thangOK = c.get(Calendar.YEAR) == nam && c.get(Calendar.MONTH) + 1 == thang;
+            boolean nvOK    = maNVFilter == null || maNVFilter.equals(l.getMaNV());
+            return !thangOK || !nvOK;
+        });
+
+        List<Object[]> result = new ArrayList<>();
+        for (LichPhanCa lich : lichs) {
+            // Lấy chấm công theo maLich (dùng API có sẵn qua maNV)
+            String maNV  = lich.getMaNV();
+            String hoTen = nvMap.getOrDefault(maNV, maNV);
+
+            // Tìm chấm công khớp maLich
+            ChamCong cc   = null;
+            List<ChamCong> lichSu = chamCongDAO.getLichSuChamCong(maNV);
+            for (ChamCong item : lichSu) {
+                if (lich.getMaLich().equals(item.getMaLich())) { cc = item; break; }
+            }
+
+            String ngay      = fmtDate.format(lich.getNgayLamViec());
+            String maCa      = lich.getMaCa();
+            String gioVao    = cc != null && cc.getGioVao() != null ? fmtTime.format(cc.getGioVao())  : "—";
+            String gioRa     = cc != null && cc.getGioRa()  != null ? fmtTime.format(cc.getGioRa())   : "—";
+            String trangThai = cc != null ? trangThaiCCLabel(cc.getTrangThai()) : "Chưa chấm công";
+
+            // Tính số giờ làm
+            String soGio = "—";
+            if (cc != null && cc.getGioVao() != null && cc.getGioRa() != null) {
+                long diff = cc.getGioRa().getTime() - cc.getGioVao().getTime();
+                long hours   = diff / 3_600_000;
+                long minutes = (diff % 3_600_000) / 60_000;
+                soGio = hours + "h" + (minutes > 0 ? minutes + "m" : "");
+            }
+
+            result.add(new Object[]{ maNV, hoTen, ngay, maCa, gioVao, gioRa, trangThai, soGio });
+        }
+
+        // Sắp xếp theo ngày → maNV
+        result.sort((a, b) -> {
+            int cmp = a[2].toString().compareTo(b[2].toString());
+            return cmp != 0 ? cmp : a[0].toString().compareTo(b[0].toString());
+        });
+
+        return result;
+    }
+
+    private String trangThaiCCLabel(String tt) {
+        if (tt == null) return "—";
+        switch (tt) {
+            case "CheckIn":  return "Đang làm";
+            case "CheckOut": return "Đã về";
+            case "VangMat":  return "Vắng mặt";
+            default:         return tt;
+        }
     }
 }

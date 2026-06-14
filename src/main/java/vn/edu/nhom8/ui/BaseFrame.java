@@ -1,6 +1,7 @@
 package vn.edu.nhom8.ui;
 
 import vn.edu.nhom8.model.NhanVien;
+import vn.edu.nhom8.dao.NhanVienDAO;
 import vn.edu.nhom8.util.SessionManager;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.swing.FontIcon;
@@ -363,6 +364,9 @@ public abstract class BaseFrame extends JFrame {
     // ── Popup đổi mật khẩu ───────────────────────────────────────────────────
 
     private void showDoiMatKhau() {
+        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        if (nv == null) { showError("Không tìm thấy thông tin người dùng."); return; }
+
         JPanel p = new JPanel(new GridLayout(3, 2, 8, 10));
         p.setBorder(new EmptyBorder(10, 10, 10, 10));
         JPasswordField fOld  = new JPasswordField();
@@ -374,21 +378,84 @@ public abstract class BaseFrame extends JFrame {
 
         int r = JOptionPane.showConfirmDialog(this, p, "Đổi mật khẩu",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r == JOptionPane.OK_OPTION) {
-            String n = new String(fNew.getPassword());
-            String c = new String(fConf.getPassword());
-            if (n.isEmpty()) { showError("Mật khẩu mới không được để trống."); return; }
-            if (!n.equals(c)) { showError("Mật khẩu xác nhận không khớp."); return; }
-            if (n.length() < 6) { showError("Mật khẩu phải có ít nhất 6 ký tự."); return; }
+        if (r != JOptionPane.OK_OPTION) return;
+
+        String oldPwd = new String(fOld.getPassword());
+        String newPwd = new String(fNew.getPassword());
+        String conf   = new String(fConf.getPassword());
+
+        if (oldPwd.isEmpty()) { showError("Vui lòng nhập mật khẩu cũ."); return; }
+        if (!oldPwd.equals(nv.getMatKhau())) { showError("Mật khẩu cũ không đúng."); return; }
+        if (newPwd.isEmpty()) { showError("Mật khẩu mới không được để trống."); return; }
+        if (!newPwd.equals(conf)) { showError("Mật khẩu xác nhận không khớp."); return; }
+        if (newPwd.length() < 6) { showError("Mật khẩu phải có ít nhất 6 ký tự."); return; }
+
+        NhanVienDAO dao = new NhanVienDAO();
+        boolean ok = dao.updatePassword(nv.getTaiKhoan(), newPwd);
+        if (ok) {
+            nv.setMatKhau(newPwd); // cập nhật session
             JOptionPane.showMessageDialog(this, "Đổi mật khẩu thành công!", "Thành công",
                     JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            showError("Đổi mật khẩu thất bại. Vui lòng thử lại.");
         }
     }
 
+    // ── Popup đổi thông tin cá nhân ──────────────────────────────────────────
+
     private void showDoiThongTin() {
-        JOptionPane.showMessageDialog(this,
-                "Tính năng đổi thông tin cá nhân sẽ được cập nhật sau.",
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        if (nv == null) { showError("Không tìm thấy thông tin người dùng."); return; }
+
+        // Form
+        JPanel form = new JPanel(new GridLayout(4, 2, 8, 10));
+        form.setBorder(new EmptyBorder(12, 14, 12, 14));
+
+        JTextField txtHoTen = new JTextField(nv.getHoTen());
+        JTextField txtMaNV  = new JTextField(nv.getMaNV());
+        JTextField txtTK    = new JTextField(nv.getTaiKhoan());
+        JTextField txtVaiTro= new JTextField(nv.getVaiTro());
+
+        txtMaNV.setEditable(false);
+        txtMaNV.setBackground(new Color(241, 245, 249));
+        txtTK.setEditable(false);
+        txtTK.setBackground(new Color(241, 245, 249));
+        txtVaiTro.setEditable(false);
+        txtVaiTro.setBackground(new Color(241, 245, 249));
+
+        form.add(new JLabel("Mã nhân viên:"));  form.add(txtMaNV);
+        form.add(new JLabel("Họ và tên *:"));   form.add(txtHoTen);
+        form.add(new JLabel("Tài khoản:"));     form.add(txtTK);
+        form.add(new JLabel("Vai trò:"));       form.add(txtVaiTro);
+
+        JLabel note = new JLabel("<html><i style='color:gray'>* Chỉ có thể chỉnh sửa Họ tên.</i></html>");
+        note.setBorder(new EmptyBorder(0, 14, 8, 14));
+
+        JPanel panel = new JPanel(new BorderLayout(0, 0));
+        panel.add(form, BorderLayout.CENTER);
+        panel.add(note, BorderLayout.SOUTH);
+
+        int result = JOptionPane.showConfirmDialog(this, panel,
+                "Thông tin cá nhân", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String hoTenMoi = txtHoTen.getText().trim();
+        if (hoTenMoi.isEmpty()) { showError("Họ tên không được để trống."); return; }
+        if (hoTenMoi.equals(nv.getHoTen())) {
+            JOptionPane.showMessageDialog(this, "Không có thay đổi nào được lưu.",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        NhanVienDAO dao = new NhanVienDAO();
+        boolean ok = dao.updateThongTin(nv.getMaNV(), hoTenMoi);
+        if (ok) {
+            nv.setHoTen(hoTenMoi); // cập nhật session
+            JOptionPane.showMessageDialog(this, "Cập nhật thông tin thành công!",
+                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            showError("Cập nhật thất bại. Vui lòng thử lại.");
+        }
     }
 
     private void doLogout() {

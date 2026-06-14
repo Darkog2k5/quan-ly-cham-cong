@@ -16,6 +16,8 @@ public class NhanVienDAO implements INhanVienDAO {
         nv.setVaiTro(rs.getString("vaiTro"));
         nv.setTaiKhoan(rs.getString("taiKhoan"));
         nv.setTrangThai(rs.getString("trangThai"));
+        // Đọc matKhau nếu cột tồn tại trong ResultSet (sp_Login trả về, sp_FindAll có thể không)
+        try { nv.setMatKhau(rs.getString("matKhau")); } catch (SQLException ignored) {}
         return nv;
     }
 
@@ -105,6 +107,17 @@ public class NhanVienDAO implements INhanVienDAO {
             cs.setString(1, maNV);
             cs.executeUpdate();
             return true;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    // ── Activate (mở khóa tài khoản) – chỉ update trangThai, KHÔNG đụng matKhau ──
+    public boolean activate(String maNV) {
+        String sql = "UPDATE NhanVien SET trangThai = N'HoatDong' WHERE maNV = ?";
+        try (Connection con = new DBConnection().getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maNV);
+            return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); }
         return false;
     }

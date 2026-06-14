@@ -33,6 +33,9 @@ public class AdminFrame extends BaseFrame {
         super("Quản trị hệ thống");
         buildContent();
         initRoleTabs(ROLE_TAB_ADMIN, ROLE_TAB_ADMIN);
+        // Admin chỉ dùng tab Quản trị hệ thống — khóa tab Nhân viên và Quản lý
+        setRoleTabEnabled(ROLE_TAB_STAFF,   false);
+        setRoleTabEnabled(ROLE_TAB_MANAGER, false);
         setVisible(true);
     }
 
@@ -531,7 +534,7 @@ public class AdminFrame extends BaseFrame {
         if (r == JOptionPane.YES_OPTION) {
             boolean ok = khoa
                     ? nvDAO.deactivate(maNV)
-                    : nvDAO.update(buildNhanVienFromRow(row, "HoatDong"));
+                    : nvDAO.activate(maNV);   // dùng activate() – chỉ update trangThai, không đụng matKhau
             if (ok) {
                 nvModel.setValueAt(khoa ? "NgungHoatDong" : "HoatDong", row, 4);
                 showSuccess(action + " tài khoản \"" + ten + "\" thành công.");

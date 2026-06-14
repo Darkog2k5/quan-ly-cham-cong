@@ -13,10 +13,24 @@ import vn.edu.nhom8.service.ManagerService;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 
 import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -41,6 +55,13 @@ public class ManagerFrame extends BaseFrame {
     private static final int TAB_XEPLICH  = 0;
     private static final int TAB_DUYET    = 1;
     private static final int TAB_LICHTONG = 2;
+    private static final int TAB_BAOCAO   = 3;
+
+    // Widgets tab Báo cáo
+    private DefaultTableModel baoCaoModel;
+    private JTable            tblBaoCao;
+    private JSpinner          spThang, spNam;
+    private JComboBox<String> cboNVBaoCao;
 
     // Widgets tab Xếp lịch
     private List<JCheckBox>   checkBoxesNV = new ArrayList<>();
@@ -93,10 +114,12 @@ public class ManagerFrame extends BaseFrame {
         btnXep.addActionListener(e    -> tabs.setSelectedIndex(TAB_XEPLICH));
         btnDuyet.addActionListener(e  -> tabs.setSelectedIndex(TAB_DUYET));
         btnLich.addActionListener(e   -> tabs.setSelectedIndex(TAB_LICHTONG));
+        btnBaoCao.addActionListener(e -> tabs.setSelectedIndex(TAB_BAOCAO));
         btnLamMoi.addActionListener(e -> refreshTab());
 
         tb.add(btnXep); tb.add(btnDuyet); tb.add(toolbarSep());
         tb.add(btnLich); tb.add(toolbarSep());
+        tb.add(btnBaoCao); tb.add(toolbarSep());
         tb.add(btnLamMoi);
         return tb;
     }
@@ -115,10 +138,12 @@ public class ManagerFrame extends BaseFrame {
         tabs.addTab("Xếp lịch",    buildXepLichTab());
         tabs.addTab("Duyệt đổi ca", buildDuyetTab());
         tabs.addTab("Lịch tổng",    buildLichTongTab());
+        tabs.addTab("Báo cáo chấm công", buildBaoCaoTab());
 
         tabs.addChangeListener(e -> {
             if (tabs.getSelectedIndex() == TAB_DUYET)    loadYeuCauChoDuyet();
             if (tabs.getSelectedIndex() == TAB_LICHTONG) loadLichTong();
+            if (tabs.getSelectedIndex() == TAB_BAOCAO)   loadBaoCao();
         });
 
         getRoleContentPanel(ROLE_TAB_MANAGER).add(tabs, BorderLayout.CENTER);
@@ -547,6 +572,225 @@ public class ManagerFrame extends BaseFrame {
         }.execute();
     }
 
+    // ── Tab 4: Báo cáo chấm công (F3.4) ─────────────────────────────────────
+
+    private JPanel buildBaoCaoTab() {
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(12, 0, 0, 0));
+
+        // ── Header bộ lọc ──────────────────────────────────────────────────
+        JPanel filterCard = createCard("Lọc báo cáo");
+        JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 4));
+        filterRow.setOpaque(false);
+
+        // Tháng
+        Calendar cal = Calendar.getInstance();
+        spThang = new JSpinner(new SpinnerNumberModel(cal.get(Calendar.MONTH) + 1, 1, 12, 1));
+        spThang.setPreferredSize(new Dimension(60, 28));
+        spThang.setFont(UITheme.FONT_BODY);
+
+        // Năm
+        spNam = new JSpinner(new SpinnerNumberModel(cal.get(Calendar.YEAR), 2020, 2099, 1));
+        JSpinner.NumberEditor yearEd = new JSpinner.NumberEditor(spNam, "#");
+        spNam.setEditor(yearEd);
+        spNam.setPreferredSize(new Dimension(80, 28));
+        spNam.setFont(UITheme.FONT_BODY);
+
+        // ComboBox chọn NV (All + từng NV)
+        cboNVBaoCao = new JComboBox<>();
+        cboNVBaoCao.setFont(UITheme.FONT_BODY);
+        cboNVBaoCao.setPreferredSize(new Dimension(180, 28));
+        cboNVBaoCao.addItem("-- Tất cả nhân viên --");
+        new SwingWorker<List<NhanVien>, Void>() {
+            @Override protected List<NhanVien> doInBackground() { return service.getDanhSachNV(); }
+            @Override protected void done() {
+                try {
+                    for (NhanVien nv : get())
+                        cboNVBaoCao.addItem(nv.getMaNV() + " – " + nv.getHoTen());
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+
+        JButton btnXem   = actionBtn("Xem báo cáo", FontAwesomeSolid.SEARCH, UITheme.BLUE);
+        JButton btnExcel = actionBtn("Xuất Excel", FontAwesomeSolid.FILE_EXCEL, UITheme.GREEN);
+
+        btnXem.addActionListener(e -> loadBaoCao());
+        btnExcel.addActionListener(e -> xuatExcel());
+
+        filterRow.add(new JLabel("Tháng:"));  filterRow.add(spThang);
+        filterRow.add(new JLabel("Năm:"));    filterRow.add(spNam);
+        filterRow.add(new JLabel("Nhân viên:")); filterRow.add(cboNVBaoCao);
+        filterRow.add(btnXem);
+        filterRow.add(btnExcel);
+
+        filterCard.add(filterRow, BorderLayout.CENTER);
+
+        // ── Bảng kết quả ──────────────────────────────────────────────────
+        JPanel tableCard = createCard("Dữ liệu chấm công");
+        String[] cols = {"Mã NV", "Họ tên", "Ngày làm việc", "Ca", "Giờ vào",
+                         "Giờ ra", "Trạng thái CC", "Số giờ làm"};
+        tblBaoCao = createTable(cols);
+        baoCaoModel = (DefaultTableModel) tblBaoCao.getModel();
+        JScrollPane sp = new JScrollPane(tblBaoCao);
+        sp.setBorder(BorderFactory.createLineBorder(UITheme.BORDER));
+        tableCard.add(sp, BorderLayout.CENTER);
+
+        // Stat tóm tắt dưới bảng
+        JPanel sumRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 4));
+        sumRow.setOpaque(false);
+        JLabel lblTong = new JLabel("Tổng bản ghi: —");
+        lblTong.setFont(UITheme.FONT_SMALL); lblTong.setForeground(UITheme.MUTED);
+        sumRow.add(lblTong);
+        tableCard.add(sumRow, BorderLayout.SOUTH);
+
+        // Cập nhật lblTong sau mỗi lần load
+        baoCaoModel.addTableModelListener(e2 -> {
+            int n = baoCaoModel.getRowCount();
+            lblTong.setText("Tổng bản ghi: " + n);
+        });
+
+        panel.add(filterCard, BorderLayout.NORTH);
+        panel.add(tableCard, BorderLayout.CENTER);
+        return panel;
+    }
+
+    /** Tải dữ liệu chấm công vào bảng theo bộ lọc hiện tại. */
+    private void loadBaoCao() {
+        if (spThang == null) return;
+        int thang  = (int) spThang.getValue();
+        int nam    = (int) spNam.getValue();
+        String nvFilter = cboNVBaoCao.getSelectedIndex() == 0 ? null
+                : cboNVBaoCao.getSelectedItem().toString().split(" – ")[0].trim();
+
+        new SwingWorker<List<Object[]>, Void>() {
+            @Override protected List<Object[]> doInBackground() {
+                return service.getBaoCaoChamCong(thang, nam, nvFilter);
+            }
+            @Override protected void done() {
+                try {
+                    List<Object[]> rows = get();
+                    baoCaoModel.setRowCount(0);
+                    for (Object[] r : rows) baoCaoModel.addRow(r);
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+    }
+
+    /** Xuất bảng báo cáo ra file .xlsx (Apache POI). */
+    private void xuatExcel() {
+        if (baoCaoModel.getRowCount() == 0) {
+            showError("Không có dữ liệu để xuất. Vui lòng xem báo cáo trước.");
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setDialogTitle("Lưu báo cáo chấm công");
+        fc.setFileFilter(new FileNameExtensionFilter("Excel Workbook (*.xlsx)", "xlsx"));
+        String tenFile = "BaoCaoChamCong_"
+                + String.format("%02d", spThang.getValue()) + "_" + spNam.getValue() + ".xlsx";
+        fc.setSelectedFile(new File(tenFile));
+
+        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        File file = fc.getSelectedFile();
+        if (!file.getName().toLowerCase().endsWith(".xlsx"))
+            file = new File(file.getAbsolutePath() + ".xlsx");
+
+        final File finalFile = file;
+        final int thang = (int) spThang.getValue();
+        final int nam   = (int) spNam.getValue();
+
+        new SwingWorker<Boolean, Void>() {
+            String errMsg = null;
+
+            @Override protected Boolean doInBackground() {
+                try (XSSFWorkbook wb = new XSSFWorkbook()) {
+                    XSSFSheet sheet = wb.createSheet("ChamCong");
+
+                    // ── Styles ──────────────────────────────────────────
+                    XSSFCellStyle headerStyle = wb.createCellStyle();
+                    headerStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)26,(byte)54,(byte)93}, null));
+                    headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                    headerStyle.setBorderBottom(BorderStyle.THIN);
+                    headerStyle.setAlignment(HorizontalAlignment.CENTER);
+                    XSSFFont hFont = wb.createFont();
+                    hFont.setColor(IndexedColors.WHITE.getIndex());
+                    hFont.setBold(true);
+                    hFont.setFontHeightInPoints((short) 11);
+                    headerStyle.setFont(hFont);
+
+                    XSSFCellStyle titleStyle = wb.createCellStyle();
+                    XSSFFont tFont = wb.createFont();
+                    tFont.setBold(true);
+                    tFont.setFontHeightInPoints((short) 14);
+                    titleStyle.setFont(tFont);
+
+                    XSSFCellStyle evenStyle = wb.createCellStyle();
+                    evenStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)248,(byte)250,(byte)252}, null));
+                    evenStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+                    // ── Tiêu đề báo cáo ─────────────────────────────────
+                    XSSFRow titleRow = sheet.createRow(0);
+                    XSSFCell titleCell = titleRow.createCell(0);
+                    titleCell.setCellValue("BÁO CÁO CHẤM CÔNG – THÁNG " + thang + "/" + nam);
+                    titleCell.setCellStyle(titleStyle);
+
+                    XSSFRow subRow = sheet.createRow(1);
+                    subRow.createCell(0).setCellValue("Xuất lúc: "
+                            + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date()));
+
+                    sheet.createRow(2); // dòng trống
+
+                    // ── Header cột ───────────────────────────────────────
+                    String[] headers = {"Mã NV", "Họ tên", "Ngày làm việc", "Ca",
+                                        "Giờ vào", "Giờ ra", "Trạng thái CC", "Số giờ làm"};
+                    XSSFRow hRow = sheet.createRow(3);
+                    for (int c = 0; c < headers.length; c++) {
+                        XSSFCell cell = hRow.createCell(c);
+                        cell.setCellValue(headers[c]);
+                        cell.setCellStyle(headerStyle);
+                    }
+
+                    // ── Dữ liệu ─────────────────────────────────────────
+                    int rowIdx = 4;
+                    for (int r = 0; r < baoCaoModel.getRowCount(); r++) {
+                        XSSFRow dataRow = sheet.createRow(rowIdx++);
+                        XSSFCellStyle rowStyle = r % 2 == 0 ? evenStyle : null;
+                        for (int c = 0; c < baoCaoModel.getColumnCount(); c++) {
+                            XSSFCell cell = dataRow.createCell(c);
+                            Object val = baoCaoModel.getValueAt(r, c);
+                            cell.setCellValue(val != null ? val.toString() : "");
+                            if (rowStyle != null) cell.setCellStyle(rowStyle);
+                        }
+                    }
+
+                    // ── Auto-size ────────────────────────────────────────
+                    for (int c = 0; c < headers.length; c++) sheet.autoSizeColumn(c);
+
+                    try (FileOutputStream fos = new FileOutputStream(finalFile)) {
+                        wb.write(fos);
+                    }
+                    return true;
+                } catch (Exception ex) {
+                    errMsg = ex.getMessage();
+                    ex.printStackTrace();
+                    return false;
+                }
+            }
+
+            @Override protected void done() {
+                try {
+                    if (get()) {
+                        showSuccess("Xuất Excel thành công!\n" + finalFile.getAbsolutePath());
+                    } else {
+                        showError("Xuất thất bại: " + errMsg);
+                    }
+                } catch (Exception ex) { ex.printStackTrace(); }
+            }
+        }.execute();
+    }
+
     // ── Tab 3: Lịch tổng ──────────────────────────────────────────────────────
 
     private JPanel buildLichTongTab() {
@@ -704,6 +948,7 @@ public class ManagerFrame extends BaseFrame {
         if (idx == TAB_XEPLICH)  loadLichDaXep();
         if (idx == TAB_DUYET)    loadYeuCauChoDuyet();
         if (idx == TAB_LICHTONG) loadLichTong();
+        if (idx == TAB_BAOCAO)   loadBaoCao();
         loadStatBar();
     }
 
