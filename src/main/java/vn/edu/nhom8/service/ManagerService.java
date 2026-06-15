@@ -269,4 +269,8 @@ public class ManagerService {
             default:         return tt;
         }
     }
+
+    public LichPhanCa getLichById(String maLich) {
+        return lichDAO.findById(maLich);
+    }
 }

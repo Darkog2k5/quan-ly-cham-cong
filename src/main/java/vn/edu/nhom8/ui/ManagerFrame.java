@@ -500,7 +500,7 @@ public class ManagerFrame extends BaseFrame {
         panel.add(header, BorderLayout.NORTH);
 
         // Bảng yêu cầu
-        String[] cols = {"Mã YC", "Người gửi", "Mã ca", "NV đổi cùng", "Lý do", "Ngày tạo"};
+        String[] cols = {"Mã YC", "Người gửi", "Ca gốc (Ngày)", "Người nhận", "Ca đổi (Ngày)", "Lý do", "Ngày tạo"};
         JTable tbl = createTable(cols);
         duyetModel = (DefaultTableModel) tbl.getModel();
         JScrollPane sp = new JScrollPane(tbl);
@@ -556,15 +556,43 @@ public class ManagerFrame extends BaseFrame {
                 try {
                     dsYeuCau = get();
                     duyetModel.setRowCount(0);
-                    SimpleDateFormat fmt = new SimpleDateFormat("dd/MM HH:mm");
+                    SimpleDateFormat fmtTime = new SimpleDateFormat("dd/MM HH:mm");
+                    SimpleDateFormat fmtDate = new SimpleDateFormat("dd/MM/yyyy"); // Format ngày tháng năm
+
                     for (YeuCauDoiCa yc : dsYeuCau) {
+                        
+                        // --- 1. XỬ LÝ THÔNG TIN NGƯỜI GỬI (GỐC) ---
+                        LichPhanCa lichGoc = service.getLichById(yc.getMaLichGoc());
+                        String maNguoiGui = (lichGoc != null) ? lichGoc.getMaNV() : "—";
+                        String caGoc = (lichGoc != null) ? 
+                            (lichGoc.getMaCa() + " (" + fmtDate.format(lichGoc.getNgayLamViec()) + ")") : "—";
+
+                        // --- 2. XỬ LÝ THÔNG TIN NGƯỜI NHẬN (ĐÍCH) ---
+                        String maNguoiNhan = (yc.getMaNVTarget() != null) ? yc.getMaNVTarget() : "—";
+                        String caDoi = "—";
+
+                        // Nếu có mã lịch đích -> Đây là đổi ca cho nhau
+                        if (yc.getMaLichTarget() != null && !yc.getMaLichTarget().trim().isEmpty()) {
+                            LichPhanCa lichDich = service.getLichById(yc.getMaLichTarget());
+                            if (lichDich != null) {
+                                caDoi = lichDich.getMaCa() + " (" + fmtDate.format(lichDich.getNgayLamViec()) + ")";
+                            }
+                        } 
+                        // Nếu không có lịch đích -> Đây là nhờ làm giúp (không đổi qua lại)
+                        else if (yc.getMaNVTarget() != null && !yc.getMaNVTarget().trim().isEmpty()) {
+                            caDoi = "Làm giúp (Không đổi)";
+                        }
+
+                        // --- 3. ĐẨY DỮ LIỆU LÊN BẢNG ---
+                        // Nhớ chú ý thứ tự đẩy vào mảng phải khớp với String[] cols ở Bước 1
                         duyetModel.addRow(new Object[]{
                                 yc.getMaYeuCau(),
-                                yc.getMaLichGoc(),  // Khởi join thêm tên NV khi DAO đủ
-                                yc.getMaLichGoc(),
-                                yc.getMaNVTarget() != null ? yc.getMaNVTarget() : "—",
+                                maNguoiGui,
+                                caGoc,
+                                maNguoiNhan,
+                                caDoi,
                                 yc.getLyDo(),
-                                yc.getNgayTao() != null ? fmt.format(yc.getNgayTao()) : "—"
+                                yc.getNgayTao() != null ? fmtTime.format(yc.getNgayTao()) : "—"
                         });
                     }
                 } catch (Exception ex) { ex.printStackTrace(); }
