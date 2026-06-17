@@ -2,13 +2,13 @@
 
 Đây là dự án môn học **Thực tập cơ sở** của **Nhóm 8**. Hệ thống được xây dựng nhằm mục đích số hóa quy trình phân ca, quản lý nhân sự và tự động hóa việc chấm công cho các cửa hàng, doanh nghiệp vừa và nhỏ, khắc phục những hạn chế của phương pháp quản lý thủ công (giấy tờ, excel).
 
-## 👥 Thành viên nhóm
+## Thành viên nhóm
 
 - **Tuấn Kiệt (Trưởng nhóm)**: Quản lý tiến độ, tích hợp hệ thống, Code module Đăng nhập (F1), Xuất báo cáo Excel (F3.4), Kiểm thử tổng thể và làm tài liệu.
 - **Huy (Developer)**: Xây dựng toàn bộ giao diện Nhân viên (F4) và Quản lý (F3.1-3.3), hệ thống thông báo, menu cá nhân (UI Java Swing, Service layer, Model class).
 - **Khởi (DB Designer)**: Thiết kế & xây dựng toàn bộ CSDL (ERD, SQL Server, Stored Procedures), tầng DAO, màn hình Quản trị Admin (F2).
 
-## 🛠 Công nghệ sử dụng
+## Công nghệ sử dụng
 
 - **Ngôn ngữ lập trình**: Java (JDK 8 trở lên)
 - **Giao diện người dùng**: Java Swing (Tích hợp thư viện Ikonli/FontAwesome cho icon giao diện)
@@ -18,7 +18,7 @@
   - `Apache POI`: Hỗ trợ tổng hợp và xuất báo cáo chấm công ra file Excel.
   - `Ikonli`: Quản lý icon UI (sử dụng FontAwesome).
 
-## 🚀 Tính năng chính (Functional Requirements)
+## Tính năng chính (Functional Requirements)
 
 Hệ thống được chia quyền rõ ràng với 3 vai trò (Role): **Admin**, **Manager**, **Staff**.
 
@@ -46,7 +46,7 @@ Hệ thống được chia quyền rõ ràng với 3 vai trò (Role): **Admin**,
 - **Chấm công (Check-in / Check-out)** theo thời gian thực (Real-time).
 - Tạo form gửi yêu cầu đổi ca làm việc đến Manager.
 
-## ⚙️ Hướng dẫn cài đặt và chạy dự án
+## Hướng dẫn cài đặt và chạy dự án
 
 ### Yêu cầu hệ thống:
 
@@ -85,7 +85,7 @@ Hệ thống được chia quyền rõ ràng với 3 vai trò (Role): **Admin**,
     - Tìm đến file `src/main/java/vn/edu/nhom8/Main.java`.
     - Nhấn **Run** để khởi động màn hình Đăng nhập (LoginFrame).
 
-## 📝 Quy chuẩn Code (Convention)
+## Quy chuẩn Code (Convention)
 
 Dự án áp dụng quy chuẩn chặt chẽ để đảm bảo source code rõ ràng và thống nhất:
 
