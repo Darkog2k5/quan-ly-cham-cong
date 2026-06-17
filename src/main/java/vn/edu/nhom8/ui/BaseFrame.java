@@ -28,13 +28,13 @@ import java.util.Date;
  *   └─────────────────────────────────────────────────────────┘
  *
  * Quyền truy cập:
- *   Staff   → chỉ tab 0 (Nhân viên)
- *   Manager → tab 0 + 1 (Nhân viên + Quản lý)
- *   Admin   → tab 0 + 1 + 2
+ *   Staff   → chỉ (Nhân viên)
+ *   Manager → tab (Quản lý)
+ *   Admin   → tab (admin)
  */
 public abstract class BaseFrame extends JFrame {
 
-    // ── Index các tab vai trò ─────────────────────────────────────────────────
+    //Index các tab vai trò
     public static final int ROLE_TAB_STAFF   = 0;
     public static final int ROLE_TAB_MANAGER = 1;
     public static final int ROLE_TAB_ADMIN   = 2;
@@ -63,29 +63,26 @@ public abstract class BaseFrame extends JFrame {
     private JLabel lblClock;
     private Timer  clockTimer;
 
-    // ─────────────────────────────────────────────────────────────────────────
-
+    //Constructor
     public BaseFrame(String title) {
         setTitle("WorkShift Pro — " + title);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 760);
-        setMinimumSize(new Dimension(960, 640));
-        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);//Tắt cửa sổ là tắt c/trình
+        setSize(1200, 760); //Kích thước
+        setMinimumSize(new Dimension(960, 640)); //Không cho kéo nhỏ hơn
+        setLocationRelativeTo(null); //Cửa sổ hiện giữa màn hình
         initLayout();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  LAYOUT KHUNG
-    // ═════════════════════════════════════════════════════════════════════════
 
+    //LAYOUT KHUNG
     private void initLayout() {
-        JPanel root = new JPanel(new BorderLayout());
+        JPanel root = new JPanel(new BorderLayout()); //layout NORTH|CENTER|SOUTH|WEST|EAST
         root.setBackground(UITheme.BG_PAGE);
 
-        // ── Topbar ──────────────────────────────────────────────────────────
+        //Topbar: Logo Clock Avatar
         root.add(buildTopBar(), BorderLayout.NORTH);
 
-        // ── Center: roleTabs + toolbar + content ─────────────────────────────
+        //Center: roleTabs + toolbar + content
         JPanel center = new JPanel(new BorderLayout());
         center.setBackground(UITheme.BG_PAGE);
 
@@ -143,8 +140,7 @@ public abstract class BaseFrame extends JFrame {
         });
     }
 
-    // ── RoleTabs ──────────────────────────────────────────────────────────────
-
+    //RoleTabs tab Nhân viên| Quản lý| Quản trị HT
     private JTabbedPane buildRoleTabs() {
         JTabbedPane tp = new JTabbedPane(JTabbedPane.TOP) {
             @Override
@@ -200,10 +196,10 @@ public abstract class BaseFrame extends JFrame {
         // Màu chữ theo trạng thái (sẽ được setEnabledAt từ subclass)
         tp.addChangeListener(e -> updateTabColors(tp));
         updateTabColors(tp);
-
         return tp;
     }
-
+    
+    //Đổi màu chữ
     private void updateTabColors(JTabbedPane tp) {
         for (int i = 0; i < tp.getTabCount(); i++) {
             if (!tp.isEnabledAt(i)) {
@@ -216,8 +212,7 @@ public abstract class BaseFrame extends JFrame {
         }
     }
 
-    // ── Topbar ────────────────────────────────────────────────────────────────
-
+    //Topbar: WorkShift Pro   10:35:22   🔔 Avatar
     private JPanel buildTopBar() {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(UITheme.NAVY);
@@ -320,17 +315,16 @@ public abstract class BaseFrame extends JFrame {
         clockTimer = new Timer(1000, e -> updateClock());
         clockTimer.start();
         updateClock();
-
         return bar;
     }
 
+    //Cập nhật thời gian thực trên giao diện Swing
     private void updateClock() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss   dd/MM/yyyy");
         lblClock.setText(sdf.format(new Date()));
     }
 
-    // ── Menu avatar popup ────────────────────────────────────────────────────
-
+    //hiển thị menu khi nhấn vào avatar của người dùng
     private void showAvatarMenu(Component anchor) {
         JPopupMenu popup = new JPopupMenu();
         popup.setBackground(Color.WHITE);
@@ -361,10 +355,9 @@ public abstract class BaseFrame extends JFrame {
         popup.show(anchor, 0, anchor.getHeight() + 4);
     }
 
-    // ── Popup đổi mật khẩu ───────────────────────────────────────────────────
-
+    //Popup đổi mật khẩu
     private void showDoiMatKhau() {
-        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        NhanVien nv = SessionManager.getInstance().getCurrentUser(); //Lấy user đang đăng nhập
         if (nv == null) { showError("Không tìm thấy thông tin người dùng."); return; }
 
         JPanel p = new JPanel(new GridLayout(3, 2, 8, 10));
@@ -391,6 +384,7 @@ public abstract class BaseFrame extends JFrame {
         if (newPwd.length() < 6) { showError("Mật khẩu phải có ít nhất 6 ký tự."); return; }
 
         NhanVienDAO dao = new NhanVienDAO();
+        //Cập nhật mật khẩu
         boolean ok = dao.updatePassword(nv.getTaiKhoan(), newPwd);
         if (ok) {
             nv.setMatKhau(newPwd); // cập nhật session
@@ -401,10 +395,9 @@ public abstract class BaseFrame extends JFrame {
         }
     }
 
-    // ── Popup đổi thông tin cá nhân ──────────────────────────────────────────
-
+    //Popup đổi thông tin cá nhân 
     private void showDoiThongTin() {
-        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        NhanVien nv = SessionManager.getInstance().getCurrentUser(); //Lấy user đang đăng nhập
         if (nv == null) { showError("Không tìm thấy thông tin người dùng."); return; }
 
         // Form
@@ -416,6 +409,7 @@ public abstract class BaseFrame extends JFrame {
         JTextField txtTK    = new JTextField(nv.getTaiKhoan());
         JTextField txtVaiTro= new JTextField(nv.getVaiTro());
 
+        //Khóa các ô ko được sửa
         txtMaNV.setEditable(false);
         txtMaNV.setBackground(new Color(241, 245, 249));
         txtTK.setEditable(false);
@@ -423,6 +417,7 @@ public abstract class BaseFrame extends JFrame {
         txtVaiTro.setEditable(false);
         txtVaiTro.setBackground(new Color(241, 245, 249));
 
+        //Tạo form
         form.add(new JLabel("Mã nhân viên:"));  form.add(txtMaNV);
         form.add(new JLabel("Họ và tên *:"));   form.add(txtHoTen);
         form.add(new JLabel("Tài khoản:"));     form.add(txtTK);
@@ -435,10 +430,12 @@ public abstract class BaseFrame extends JFrame {
         panel.add(form, BorderLayout.CENTER);
         panel.add(note, BorderLayout.SOUTH);
 
+        //Hiển thị hộp thoại
         int result = JOptionPane.showConfirmDialog(this, panel,
                 "Thông tin cá nhân", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) return;
 
+        //Lấy họ tên mới
         String hoTenMoi = txtHoTen.getText().trim();
         if (hoTenMoi.isEmpty()) { showError("Họ tên không được để trống."); return; }
         if (hoTenMoi.equals(nv.getHoTen())) {
@@ -448,6 +445,7 @@ public abstract class BaseFrame extends JFrame {
         }
 
         NhanVienDAO dao = new NhanVienDAO();
+        //Cập nhật Database
         boolean ok = dao.updateThongTin(nv.getMaNV(), hoTenMoi);
         if (ok) {
             nv.setHoTen(hoTenMoi); // cập nhật session
@@ -458,6 +456,7 @@ public abstract class BaseFrame extends JFrame {
         }
     }
 
+    //Đăng xuất
     private void doLogout() {
         int r = JOptionPane.showConfirmDialog(this,
                 "Bạn có chắc muốn đăng xuất không?",
@@ -470,10 +469,9 @@ public abstract class BaseFrame extends JFrame {
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
+    
+    
     //  PROTECTED API cho subclass
-    // ═════════════════════════════════════════════════════════════════════════
-
     /**
      * Subclass gọi trong constructor TRƯỚC khi setVisible:
      *   initRoleTabs(enabledUntilIndex, defaultTabIndex);
@@ -483,6 +481,10 @@ public abstract class BaseFrame extends JFrame {
      *   Manager → initRoleTabs(ROLE_TAB_MANAGER, ROLE_TAB_MANAGER)
      *   Admin   → initRoleTabs(ROLE_TAB_ADMIN,   ROLE_TAB_ADMIN)
      */
+
+
+    //phân quyền các tab theo vai trò người dùng
+    //tạo toolbar tương ứng cho từng tab được phép truy cập và hiển thị tab mặc định.
     protected void initRoleTabs(int enabledUntilIndex, int defaultTabIndex) {
         // Disable các tab vượt quyền
         for (int i = 0; i < roleTabs.getTabCount(); i++) {
@@ -554,10 +556,8 @@ public abstract class BaseFrame extends JFrame {
                 "Chưa có thông báo mới.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═════════════════════════════════════════════════════════════════════════
-
+    //HELPERS
+    //hàm tiện ích dùng để tạo các nút chỉ chứa icon
     protected JButton createIconButton(FontAwesomeSolid iconCode) {
         JButton btn = new JButton(FontIcon.of(iconCode, 18, Color.WHITE));
         btn.setContentAreaFilled(false);
@@ -567,6 +567,7 @@ public abstract class BaseFrame extends JFrame {
         return btn;
     }
 
+    //dùng để tạo một JMenuItem đã được định dạng sẵn
     protected JMenuItem menuItem(String text, FontAwesomeSolid iconCode) {
         JMenuItem mi = new JMenuItem(text);
         if (iconCode != null) mi.setIcon(FontIcon.of(iconCode, 14, UITheme.TEXT2));
@@ -595,7 +596,7 @@ public abstract class BaseFrame extends JFrame {
         return actionBtn(text, null, bg);
     }
 
-    // --- HÀM MỚI: Hỗ trợ Icon Ikonli ---
+    //HÀM MỚI: Hỗ trợ Icon Ikonli
     protected JButton actionBtn(String text, FontAwesomeSolid iconCode, Color bg) {
         Color bgHover = bg.darker();
         JButton btn = new JButton(text);
@@ -662,7 +663,7 @@ public abstract class BaseFrame extends JFrame {
         return card;
     }
 
-    /** Tạo JTable đẹp chuẩn */
+    /** Tạo JTable */
     protected JTable createTable(String[] cols) {
         JTable table = new JTable(new javax.swing.table.DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -701,7 +702,7 @@ public abstract class BaseFrame extends JFrame {
         return table;
     }
 
-    // ── Backward compat: subclass cũ có buildToolbar() abstract ──────────────
+    //Backward compat: subclass cũ có buildToolbar() abstract
     // Giữ lại để không break compile (để trống)
     protected JPanel buildToolbar() { return null; }
 }

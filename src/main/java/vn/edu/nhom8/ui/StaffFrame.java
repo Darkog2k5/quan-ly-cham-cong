@@ -21,8 +21,6 @@ import java.util.List;
 
 /**
  * Màn hình Nhân viên – F4.
- *
- * BUG FIXES so với bản cũ:
  *  1. btnCheckIn / btnCheckOut là field class-level, được gán đúng trong buildInfoBar()
  *     → toolbar doCheckIn/doCheckOut và info-bar dùng cùng một instance, không còn NPE.
  *  2. doCheckIn / doCheckOut dùng CheckInResult / CheckOutResult từ StaffService
@@ -35,55 +33,54 @@ public class StaffFrame extends BaseFrame {
 
     private final StaffService service;
 
-    // ── Trạng thái chấm công phiên này ──────────────────────────────────────
+    //Trạng thái chấm công phiên này 
     private LichPhanCa caHomNay   = null;
     private boolean    daCheckIn  = false;
     private boolean    daCheckOut = false;
 
-    // ── Tab nội dung bên trong tab Nhân viên ────────────────────────────────
+    //Tab nội dung bên trong tab Nhân viên
     private JTabbedPane innerTabs;
     private static final int TAB_CHAMCONG = 0;
     private static final int TAB_LICHCA   = 1;
     private static final int TAB_DOICA    = 2;
 
-    // ── Widgets info-bar ─────────────────────────────────────────────────────
+    //Widgets info-bar
     private JLabel  lblCaTen, lblCaGio, lblStatus;
-    /** BUG FIX: field class-level – dùng chung giữa info-bar và toolbar */
     private JButton btnCheckIn, btnCheckOut;
 
-    // ── Widgets tab chấm công ────────────────────────────────────────────────
+    //Widgets tab chấm công
     private DefaultTableModel historyModel;
 
-    // ── Widgets tab lịch ca ──────────────────────────────────────────────────
+    //Widgets tab lịch ca
     private JLabel lblThang;
     private JPanel calGrid;
     private int    calNam, calThang;
 
-    // ── Widgets tab đổi ca ───────────────────────────────────────────────────
+    //Widgets tab đổi ca
     private JComboBox<LichPhanCa> cboCaTuongLai;
     private JComboBox<LichPhanCa> cboLichTarget;
     private DefaultTableModel     ycModel;
 
-    // ─────────────────────────────────────────────────────────────────────────
-
+    //constructor
     public StaffFrame(ChamCongDAO chamCongDAO,
                       ILichPhanCaDAO lichDAO,
                       IYeuCauDoiCaDAO ycDAO) {
         super("Nhân viên");
         this.service = new StaffService(chamCongDAO, lichDAO, ycDAO);
 
-        buildStaffContent();
-        initRoleTabs(ROLE_TAB_STAFF, ROLE_TAB_STAFF);
-        loadCaHomNay();
-        setVisible(true);
+        buildStaffContent(); //xây dựng giao diện của StaffFrame
+        initRoleTabs(ROLE_TAB_STAFF, ROLE_TAB_STAFF); //Khởi tạo các tab dành cho nhân viên
+        loadCaHomNay(); //Tải dữ liệu ca làm hôm nay
+        setVisible(true); //Hiển thị cửa sổ
     }
 
     public StaffFrame() {
         this(new ChamCongDAO(), null, null);
     }
 
-    // ── Toolbar ───────────────────────────────────────────────────────────────
+    //Toolbar
 
+    //tạo các nút: [Check-in] [Check-out] | [Xem ca làm] [Đổi ca] | [Làm mới]
     @Override
     protected JPanel buildToolbarForRole(int roleTabIndex) {
         if (roleTabIndex != ROLE_TAB_STAFF) return null;
@@ -109,12 +106,15 @@ public class StaffFrame extends BaseFrame {
         return tb;
     }
 
-    // ── Xây nội dung ─────────────────────────────────────────────────────────
-
+    /*Xây dựng toàn bộ nội dung giao diện của màn hình Nhân viên (StaffFrame), gồm:
+        Thanh thông tin nhân viên ở trên cùng
+        Các tab: Chấm công, Lịch ca làm, Đổi ca
+        Xử lý khi người dùng chuyển tab
+    */
     private void buildStaffContent() {
         JPanel staffPanel = getRoleContentPanel(ROLE_TAB_STAFF);
 
-        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        NhanVien nv = SessionManager.getInstance().getCurrentUser(); //Lấy nhân viên đang đăng nhập
         staffPanel.add(buildInfoBar(nv), BorderLayout.NORTH);
 
         innerTabs = new JTabbedPane(JTabbedPane.TOP);
@@ -131,8 +131,11 @@ public class StaffFrame extends BaseFrame {
         staffPanel.add(innerTabs, BorderLayout.CENTER);
     }
 
-    // ── Info bar ──────────────────────────────────────────────────────────────
-
+    /*Tạo thanh thông tin ở đầu StaffFrame, gồm 3 card:
+        Thông tin nhân viên
+        Ca làm hôm nay
+        Nút Check-in/Check-out nhanh
+    */
     private JPanel buildInfoBar(NhanVien nv) {
         JPanel bar = new JPanel(new GridLayout(1, 3, 12, 0));
         bar.setOpaque(false);
@@ -167,7 +170,7 @@ public class StaffFrame extends BaseFrame {
         card2.add(c2, BorderLayout.CENTER);
 
         // Card 3: Nút chấm công nhanh
-        // BUG FIX: gán vào field class-level (btnCheckIn / btnCheckOut)
+        //gán vào field class-level (btnCheckIn / btnCheckOut)
         JPanel card3 = createCard("Chấm công nhanh");
         JPanel btns = new JPanel(new GridLayout(1, 2, 10, 0)); btns.setOpaque(false);
         btnCheckIn  = actionBtn("CHECK-IN",  FontAwesomeSolid.SIGN_IN_ALT,  UITheme.GREEN);
@@ -183,6 +186,7 @@ public class StaffFrame extends BaseFrame {
         return bar;
     }
 
+    //Tạo một avatar (ảnh đại diện) và hiển thị chữ cái đầu tiên của tên nhân viên ở giữa
     private JPanel buildAvatar(NhanVien nv) {
         JPanel av = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
@@ -205,8 +209,10 @@ public class StaffFrame extends BaseFrame {
         return av;
     }
 
-    // ── Tab 1: Chấm công ──────────────────────────────────────────────────────
-
+    /*Tab 1
+        Tạo giao diện cho tab "Chấm công"
+        bao gồm tiêu đề, nút Làm mới và bảng lịch sử chấm công của nhân viên
+    */
     private JPanel buildChamCongTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
@@ -233,16 +239,21 @@ public class StaffFrame extends BaseFrame {
         return panel;
     }
 
-    // ── Tab 2: Lịch ca làm ────────────────────────────────────────────────────
-
+    /*Tab 2
+        Tạo giao diện tab "Lịch ca làm" giống một lịch tháng (Calendar), cho phép:
+        Xem lịch làm theo tháng
+        Chuyển tháng trước/sau
+        Quay về tháng hiện tại
+        Hiển thị ngày có ca và ngày không có ca
+     */
     private JPanel buildLichCaTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
         JPanel nav = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0)); nav.setOpaque(false);
-        JButton prev  = actionBtn("◀", UITheme.BLUE);
-        JButton next  = actionBtn("▶", UITheme.BLUE);
+        JButton prev  = actionBtn("<", UITheme.BLUE);
+        JButton next  = actionBtn(">", UITheme.BLUE);
         JButton today = actionBtn("Hôm nay", new Color(71, 85, 105));
         lblThang = new JLabel(); lblThang.setFont(new Font("Segoe UI", Font.BOLD, 15));
         nav.add(prev); nav.add(next); nav.add(today);
@@ -279,8 +290,13 @@ public class StaffFrame extends BaseFrame {
         return panel;
     }
 
-    // ── Tab 3: Đổi ca ─────────────────────────────────────────────────────────
-
+    /*Tab 3
+        xây dựng toàn bộ giao diện chức năng Đổi ca, gồm:
+        Form gửi yêu cầu đổi ca.
+        Xem ca của nhân viên muốn đổi cùng.
+        Gửi yêu cầu qua StaffService.
+        Hiển thị lịch sử các yêu cầu đổi ca đã gửi trong một bảng bên phải.
+     */
     private JPanel buildDoiCaTab() {
         JPanel panel = new JPanel(new GridLayout(1, 2, 14, 0));
         panel.setOpaque(false);
@@ -294,12 +310,14 @@ public class StaffFrame extends BaseFrame {
         hint.setFont(UITheme.FONT_SMALL); hint.setForeground(UITheme.AMBER);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        //ComboBox chọn ca cần đổi
         cboCaTuongLai = new JComboBox<>();
         cboCaTuongLai.setFont(UITheme.FONT_BODY);
         cboCaTuongLai.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         cboCaTuongLai.setAlignmentX(Component.LEFT_ALIGNMENT);
         cboCaTuongLai.setRenderer(lichRenderer());
 
+        //TextField nhập mã nhân viên cần đổi ca
         JTextField txtNVNhan = new JTextField();
         txtNVNhan.setFont(UITheme.FONT_BODY);
         txtNVNhan.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
@@ -308,13 +326,15 @@ public class StaffFrame extends BaseFrame {
         txtNVNhan.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER), new EmptyBorder(4, 8, 4, 8)));
 
+        //ComboBox chọn ca của nhân viên muốn đổi
         cboLichTarget = new JComboBox<>();
         cboLichTarget.setFont(UITheme.FONT_BODY);
         cboLichTarget.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         cboLichTarget.setAlignmentX(Component.LEFT_ALIGNMENT);
         cboLichTarget.setEnabled(false);
         cboLichTarget.setRenderer(lichRenderer());
-
+        
+        //Nút "Xem ca của NV muốn đổi"
         JButton btnTaiCaNV = actionBtn("🔍  Xem ca của NV", new Color(71, 85, 105));
         btnTaiCaNV.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnTaiCaNV.addActionListener(e -> {
@@ -344,6 +364,7 @@ public class StaffFrame extends BaseFrame {
             }.execute();
         });
 
+        //TextArea lý do đổi ca
         JTextArea txtLyDo = new JTextArea(3, 20);
         txtLyDo.setFont(UITheme.FONT_BODY); txtLyDo.setLineWrap(true); txtLyDo.setWrapStyleWord(true);
         txtLyDo.setBorder(BorderFactory.createCompoundBorder(
@@ -352,6 +373,7 @@ public class StaffFrame extends BaseFrame {
         scrollLyDo.setAlignmentX(Component.LEFT_ALIGNMENT);
         scrollLyDo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
 
+        //Nút Gửi yêu cầu
         JButton btnGui = actionBtn("Gửi yêu cầu", FontAwesomeSolid.PAPER_PLANE, UITheme.BLUE);
         btnGui.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnGui.addActionListener(e -> {
@@ -362,6 +384,7 @@ public class StaffFrame extends BaseFrame {
             Object selTarget = cboLichTarget.getSelectedItem();
             String maLichTarget = (selTarget instanceof LichPhanCa) ? ((LichPhanCa) selTarget).getMaLich() : null;
 
+            //Gọi Service tạo yêu cầu đổi ca.
             String err = service.guiYeuCauDoiCa(
                     nv.getMaNV(), maLich,
                     txtNVNhan.getText().trim(),
@@ -377,7 +400,10 @@ public class StaffFrame extends BaseFrame {
                 showError(err);
             }
         });
-
+        /*
+        Xếp các component của form đổi ca vào body.
+        Tạo bảng lịch sử yêu cầu đổi ca và ghép vào panel chính  
+        */
         body.add(hint);                                  body.add(Box.createVerticalStrut(10));
         body.add(fLabel("Ca cần đổi *"));               body.add(Box.createVerticalStrut(4));
         body.add(cboCaTuongLai);                         body.add(Box.createVerticalStrut(10));
@@ -391,6 +417,7 @@ public class StaffFrame extends BaseFrame {
         body.add(btnGui);
         formCard.add(body, BorderLayout.CENTER);
 
+        //tạo phần "Lịch sử yêu cầu đổi ca" ở bên phải giao diện.
         JPanel histCard = createCard("Lịch sử yêu cầu đổi ca");
         String[] cols = {"Mã YC", "Mã ca", "NV đổi cùng", "Đổi lấy ca", "Trạng thái", "Ngày tạo"};
         JTable tbl = createTable(cols);
@@ -403,12 +430,13 @@ public class StaffFrame extends BaseFrame {
         return panel;
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  LOAD DATA
-    // ═════════════════════════════════════════════════════════════════════════
+   
+    //------LOAD DATA--------
 
+    //tải thông tin ca làm việc hôm nay của nhân viên
+    //cập nhật giao diện chấm công
     private void loadCaHomNay() {
-        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        NhanVien nv = SessionManager.getInstance().getCurrentUser(); //Lấy thông tin nhân viên hiện tại
         if (nv == null) return;
 
         new SwingWorker<LichPhanCa, Void>() {
@@ -425,7 +453,7 @@ public class StaffFrame extends BaseFrame {
                                 .format(caHomNay.getNgayLamViec()));
 
                         boolean ci  = service.isCheckedIn(nv.getMaNV(), caHomNay.getMaLich());
-                        // BUG FIX: kiểm tra thêm isCheckedOut
+                        //kiểm tra thêm isCheckedOut
                         boolean co  = ci && service.isCheckedOut(caHomNay.getMaLich());
 
                         if (co) {
@@ -465,6 +493,7 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
+    //lấy lịch sử chấm công của nhân viên từ database và hiển thị lên JTable
     private void loadLichSuChamCong() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
@@ -493,6 +522,14 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
+    /*
+        tải lịch phân ca của nhân viên theo tháng đang chọn
+        hiển thị lên giao diện lịch (calendar)
+        Mở tab Lịch làm việc
+        Nhấn nút Tháng trước
+        Nhấn nút Tháng sau
+        Đổi tháng/năm
+     */
     private void loadCalendar() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
@@ -508,6 +545,10 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
+    /*
+        vẽ giao diện lịch tháng (Calendar) lên calGrid, tô màu các ngày có ca làm, 
+        đánh dấu ngày hiện tại và cho phép bấm vào ngày để xem chi tiết ca 
+    */
     private void buildCalGrid(List<LichPhanCa> lichTrongThang) {
         calGrid.removeAll();
         for (String d : new String[]{"CN","T2","T3","T4","T5","T6","T7"}) {
@@ -556,6 +597,10 @@ public class StaffFrame extends BaseFrame {
         calGrid.revalidate(); calGrid.repaint();
     }
 
+    /*
+        tải danh sách các ca làm việc trong tương lai của nhân viên và đưa vào JComboBox (cboCaTuongLai) 
+        để nhân viên có thể chọn ca cần đổi.
+    */
     private void loadCaTuongLai() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
@@ -574,6 +619,10 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
+    /*
+        tải lịch sử các yêu cầu đổi ca của nhân viên đang đăng nhập và 
+        hiển thị lên JTable (ycModel)
+    */
     private void loadYeuCauHistory() {
         NhanVien nv = SessionManager.getInstance().getCurrentUser();
         if (nv == null) return;
@@ -600,17 +649,19 @@ public class StaffFrame extends BaseFrame {
         }.execute();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  LOGIC CHẤM CÔNG
-    // ═════════════════════════════════════════════════════════════════════════
-
+    //------LOGIC CHẤM CÔNG-------
+    /*
+        xử lý sự kiện nhân viên bấm nút Check In, gọi StaffService.checkIn(), 
+        cập nhật trạng thái giao diện và nạp lại lịch sử chấm công
+    */
     private void doCheckIn() {
-        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        NhanVien nv = SessionManager.getInstance().getCurrentUser(); //Lấy nhân viên đang đăng nhập
         if (nv == null) return;
 
         // Guard: đã check-in rồi
         if (daCheckIn) { showError("Bạn đã check-in rồi!"); return; }
 
+        //Lấy mã ca làm việc của hôm nay (nếu có)
         String maLich = caHomNay != null ? caHomNay.getMaLich() : null;
         StaffService.CheckInResult result = service.checkIn(nv.getMaNV(), maLich);
 
@@ -623,7 +674,7 @@ public class StaffFrame extends BaseFrame {
         btnCheckIn.setEnabled(false);
         btnCheckOut.setEnabled(true);
 
-        // BUG FIX: Hiển thị đúng trạng thái: DungGio / DiMuon
+        //Hiển thị đúng trạng thái: DungGio / DiMuon
         if ("DiMuon".equals(result.trangThai)) {
             lblStatus.setText("Đang trong ca  ⚠ ĐI MUỘN");
             lblStatus.setForeground(UITheme.AMBER);
@@ -633,12 +684,15 @@ public class StaffFrame extends BaseFrame {
             lblStatus.setForeground(UITheme.GREEN);
             showSuccess(result.message);
         }
-
         loadLichSuChamCong();
     }
 
+    /*
+        xử lý sự kiện nhân viên bấm nút Check Out, gọi StaffService.checkOut(), 
+        cập nhật trạng thái giao diện và làm mới lịch sử chấm công.
+    */
     private void doCheckOut() {
-        NhanVien nv = SessionManager.getInstance().getCurrentUser();
+        NhanVien nv = SessionManager.getInstance().getCurrentUser(); //Lấy nhân viên đang đăng nhập
         if (nv == null) return;
 
         // Guard
@@ -650,7 +704,8 @@ public class StaffFrame extends BaseFrame {
                 "Xác nhận check-out?\n(Nếu về trước giờ kết thúc ca sẽ bị đánh dấu Về sớm.)",
                 "Check-out", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
-
+        
+        //Lấy mã ca làm việc của hôm nay (nếu có)
         String maLich = caHomNay != null ? caHomNay.getMaLich() : null;
         StaffService.CheckOutResult result = service.checkOut(nv.getMaNV(), maLich);
 
@@ -662,7 +717,7 @@ public class StaffFrame extends BaseFrame {
         daCheckOut = true;
         btnCheckOut.setEnabled(false);
 
-        // BUG FIX: Hiển thị đúng trạng thái sau checkout
+        //Hiển thị đúng trạng thái sau checkout
         switch (result.trangThai != null ? result.trangThai : "") {
             case "VeSom":
                 lblStatus.setText("Đã hoàn thành ca  ⚠ VỀ SỚM");
@@ -680,31 +735,28 @@ public class StaffFrame extends BaseFrame {
                 showSuccess(result.message);
                 break;
         }
-
         loadLichSuChamCong();
     }
 
-    /** BUG FIX: reset đầy đủ, bao gồm daCheckOut */
+    /*làm mới (refresh) toàn bộ giao diện chấm công và lịch làm việc*/
     private void refreshAll() {
         caHomNay  = null;
         daCheckIn  = false;
-        daCheckOut = false;                  // ← bản cũ thiếu cái này
-
+        daCheckOut = false;               
         lblCaTen.setText("Đang tải...");
         lblCaTen.setForeground(UITheme.BLUE);
         lblStatus.setText("Đang tải...");
         lblStatus.setForeground(UITheme.MUTED);
         btnCheckIn.setEnabled(false);
         btnCheckOut.setEnabled(false);
-
         loadCaHomNay();
         if (innerTabs.getSelectedIndex() == TAB_LICHCA) loadCalendar();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═════════════════════════════════════════════════════════════════════════
 
+    //  HELPERS
+
+    //chuyển mã trạng thái trong database thành chuỗi tiếng Việt để hiển thị trên giao diện.
     static String trangThaiLabel(String code) {
         if (code == null) return "—";
         switch (code) {
@@ -719,6 +771,7 @@ public class StaffFrame extends BaseFrame {
         }
     }
 
+    //Định dạng lại hiển thị trong Jlist
     private DefaultListCellRenderer lichRenderer() {
         return new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(
@@ -736,6 +789,7 @@ public class StaffFrame extends BaseFrame {
         };
     }
 
+    //định dạng (font, màu, căn lề)
     private JLabel fLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -744,6 +798,7 @@ public class StaffFrame extends BaseFrame {
         return l;
     }
 
+    //tạo một chú thích màu (legend)
     private JPanel dotLabel(Color color, String text) {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); p.setOpaque(false);
         JLabel box = new JLabel("   "); box.setBackground(color); box.setOpaque(true);
