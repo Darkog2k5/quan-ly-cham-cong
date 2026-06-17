@@ -1,16 +1,4 @@
-﻿-- ============================================================
---  HỆ THỐNG QUẢN LÝ CA LÀM VIỆC  –  NHÓM 8
---  File 1/2: Schema – Tạo bảng & Stored Procedures
---
---  Chạy file này TRƯỚC, sau đó chạy file 2 (data_insert.sql).
---  Yêu cầu: SQL Server 2016+ / Azure SQL
---  Encoding : UTF-8 with BOM
--- ============================================================
-
-
--- ============================================================
---  PHẦN 0 – TẠO & CHỌN DATABASE
--- ============================================================
+﻿--  0 - TẠO & CHỌN DATABASE
 
 IF NOT EXISTS (
     SELECT 1 FROM sys.databases WHERE name = N'HeThongQuanLyCaLamViec'
@@ -21,36 +9,26 @@ GO
 USE HeThongQuanLyCaLamViec;
 GO
 
+--  1 - TẠO CÁC BẢNG
+--  Thứ tự tạo bảng: NhanVien → CaLamViec → LichPhanCa → ChamCong → YeuCauDoiCa
 
--- ============================================================
---  PHẦN 1 – TẠO CÁC BẢNG
---
---  Thứ tự tạo quan trọng vì có FOREIGN KEY:
---    NhanVien → CaLamViec → LichPhanCa → ChamCong
---                                      → YeuCauDoiCa
--- ============================================================
-
--- ------------------------------------------------------------
 -- 1.1  NHÂN VIÊN
 --      Lưu thông tin tài khoản & vai trò của từng nhân viên.
 --      vaiTro   : 'admin' | 'manager' | 'Staff'
 --      trangThai: 'HoatDong' | 'NgungHoatDong'
--- ------------------------------------------------------------
 IF OBJECT_ID(N'NhanVien', N'U') IS NULL
 CREATE TABLE NhanVien (
     maNV      VARCHAR(20)   NOT NULL  CONSTRAINT PK_NhanVien PRIMARY KEY,
     hoTen     NVARCHAR(100) NOT NULL,
     vaiTro    NVARCHAR(50)  NOT NULL,
     taiKhoan  VARCHAR(50)   NOT NULL  CONSTRAINT UQ_NhanVien_TaiKhoan UNIQUE,
-    matKhau   VARCHAR(255)  NOT NULL, -- Độ dài 255 để chứa chuỗi BCrypt hash
+    matKhau   VARCHAR(255)  NOT NULL,
     trangThai NVARCHAR(30)  NOT NULL  CONSTRAINT DF_NhanVien_TrangThai DEFAULT N'HoatDong'
 );
 GO
 
--- ------------------------------------------------------------
 -- 1.2  CA LÀM VIỆC
 --      Định nghĩa các loại ca (sáng/chiều/tối) và khung giờ.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'CaLamViec', N'U') IS NULL
 CREATE TABLE CaLamViec (
     maCa       VARCHAR(20)  NOT NULL  CONSTRAINT PK_CaLamViec PRIMARY KEY,
@@ -60,11 +38,9 @@ CREATE TABLE CaLamViec (
 );
 GO
 
--- ------------------------------------------------------------
 -- 1.3  LỊCH PHÂN CA
 --      Ghi nhận NV nào được xếp vào ca nào, ngày nào.
 --      trangThai: 'DaPhan' | 'DaHuy'
--- ------------------------------------------------------------
 IF OBJECT_ID(N'LichPhanCa', N'U') IS NULL
 CREATE TABLE LichPhanCa (
     maLich      VARCHAR(20)  NOT NULL  CONSTRAINT PK_LichPhanCa PRIMARY KEY,
@@ -77,13 +53,11 @@ CREATE TABLE LichPhanCa (
 );
 GO
 
--- ------------------------------------------------------------
 -- 1.4  CHẤM CÔNG
 --      Ghi nhận giờ vào / giờ ra thực tế của NV.
 --      trangThai: 'DungGio' | 'DiMuon' | 'VeSom'
 --                 Được tính tự động bởi sp_CheckIn / sp_CheckOut.
 --      minhChung: đường dẫn ảnh hoặc ghi chú (để dành mở rộng)
--- ------------------------------------------------------------
 IF OBJECT_ID(N'ChamCong', N'U') IS NULL
 CREATE TABLE ChamCong (
     maCong    VARCHAR(20)   NOT NULL  CONSTRAINT PK_ChamCong PRIMARY KEY,
@@ -96,7 +70,6 @@ CREATE TABLE ChamCong (
 );
 GO
 
--- ------------------------------------------------------------
 -- 1.5  YÊU CẦU ĐỔI CA
 --      maLichGoc   : ca của người GỬI yêu cầu
 --      maNVTarget  : NV được nhờ / đổi cùng (có thể NULL)
@@ -104,7 +77,6 @@ GO
 --                    NULL  → "nhờ làm giúp" (chuyển hẳn ca cho NV target)
 --                    khác  → "đổi ca cho nhau" (hoán đổi 2 lịch)
 --      trangThai: 'ChoDuyet' | 'DaChapNhan' | 'TuChoi'
--- ------------------------------------------------------------
 IF OBJECT_ID(N'YeuCauDoiCa', N'U') IS NULL
 CREATE TABLE YeuCauDoiCa (
     maYeuCau     VARCHAR(20)   NOT NULL  CONSTRAINT PK_YeuCauDoiCa PRIMARY KEY,
@@ -121,14 +93,10 @@ CREATE TABLE YeuCauDoiCa (
 GO
 
 
--- ============================================================
---  PHẦN 2 – STORED PROCEDURES: NHÂN VIÊN
--- ============================================================
+--  2 – STORED PROCEDURES: NHÂN VIÊN
 
--- ------------------------------------------------------------
 -- 2.1  Đăng nhập
 --      Trả về 1 hàng nếu tài khoản + mật khẩu đúng và đang HoatDong.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_Login', N'P') IS NOT NULL DROP PROCEDURE sp_Login;
 GO
 CREATE PROCEDURE sp_Login
@@ -145,9 +113,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 2.2  Tìm nhân viên theo mã
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindNhanVienById', N'P') IS NOT NULL DROP PROCEDURE sp_FindNhanVienById;
 GO
 CREATE PROCEDURE sp_FindNhanVienById
@@ -159,9 +125,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 2.3  Lấy toàn bộ nhân viên
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindAllNhanVien', N'P') IS NOT NULL DROP PROCEDURE sp_FindAllNhanVien;
 GO
 CREATE PROCEDURE sp_FindAllNhanVien
@@ -172,9 +136,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 2.4  Thêm nhân viên mới
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_InsertNhanVien', N'P') IS NOT NULL DROP PROCEDURE sp_InsertNhanVien;
 GO
 CREATE PROCEDURE sp_InsertNhanVien
@@ -192,9 +154,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 2.5  Cập nhật thông tin nhân viên (không đổi trangThai)
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_UpdateNhanVien', N'P') IS NOT NULL DROP PROCEDURE sp_UpdateNhanVien;
 GO
 CREATE PROCEDURE sp_UpdateNhanVien
@@ -215,9 +175,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 2.6  Khóa tài khoản (xóa mềm – chỉ đổi trạng thái)
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_DeactivateNhanVien', N'P') IS NOT NULL DROP PROCEDURE sp_DeactivateNhanVien;
 GO
 CREATE PROCEDURE sp_DeactivateNhanVien
@@ -230,13 +188,9 @@ END
 GO
 
 
--- ============================================================
 --  PHẦN 3 – STORED PROCEDURES: CA LÀM VIỆC
--- ============================================================
 
--- ------------------------------------------------------------
 -- 3.1  Lấy toàn bộ ca làm việc
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindAllCaLamViec', N'P') IS NOT NULL DROP PROCEDURE sp_FindAllCaLamViec;
 GO
 CREATE PROCEDURE sp_FindAllCaLamViec
@@ -247,9 +201,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 3.2  Tìm ca theo mã
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindCaLamViecById', N'P') IS NOT NULL DROP PROCEDURE sp_FindCaLamViecById;
 GO
 CREATE PROCEDURE sp_FindCaLamViecById
@@ -261,9 +213,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 3.3  Thêm ca làm việc
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_InsertCaLamViec', N'P') IS NOT NULL DROP PROCEDURE sp_InsertCaLamViec;
 GO
 CREATE PROCEDURE sp_InsertCaLamViec
@@ -279,9 +229,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 3.4  Cập nhật ca làm việc
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_UpdateCaLamViec', N'P') IS NOT NULL DROP PROCEDURE sp_UpdateCaLamViec;
 GO
 CREATE PROCEDURE sp_UpdateCaLamViec
@@ -300,11 +248,9 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 3.5  Xóa ca làm việc
 --      Sẽ thất bại nếu ca đang được dùng trong LichPhanCa.
 --      Java bắt SQLException và thông báo cho user.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_DeleteCaLamViec', N'P') IS NOT NULL DROP PROCEDURE sp_DeleteCaLamViec;
 GO
 CREATE PROCEDURE sp_DeleteCaLamViec
@@ -317,13 +263,9 @@ END
 GO
 
 
--- ============================================================
 --  PHẦN 4 – STORED PROCEDURES: LỊCH PHÂN CA
--- ============================================================
 
--- ------------------------------------------------------------
 -- 4.1  Lấy toàn bộ lịch phân ca
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindAllLichPhanCa', N'P') IS NOT NULL DROP PROCEDURE sp_FindAllLichPhanCa;
 GO
 CREATE PROCEDURE sp_FindAllLichPhanCa
@@ -334,9 +276,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 4.2  Tìm lịch phân ca theo mã
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindLichPhanCaById', N'P') IS NOT NULL DROP PROCEDURE sp_FindLichPhanCaById;
 GO
 CREATE PROCEDURE sp_FindLichPhanCaById
@@ -348,9 +288,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 4.3  Thêm lịch phân ca mới
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_InsertLichPhanCa', N'P') IS NOT NULL DROP PROCEDURE sp_InsertLichPhanCa;
 GO
 CREATE PROCEDURE sp_InsertLichPhanCa
@@ -367,9 +305,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 4.4  Cập nhật trạng thái lịch (dùng khi hủy ca)
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_UpdateLichPhanCa', N'P') IS NOT NULL DROP PROCEDURE sp_UpdateLichPhanCa;
 GO
 CREATE PROCEDURE sp_UpdateLichPhanCa
@@ -382,11 +318,9 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 4.5  Cập nhật đầy đủ lịch phân ca (NV, ca, ngày, trạng thái)
 --      Dùng khi Quản lý sửa lịch, hoặc khi duyệt đổi ca
 --      (hoán đổi maNV giữa 2 lịch).
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_UpdateLichPhanCaFull', N'P') IS NOT NULL DROP PROCEDURE sp_UpdateLichPhanCaFull;
 GO
 CREATE PROCEDURE sp_UpdateLichPhanCaFull
@@ -407,11 +341,9 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 4.6  Xóa lịch phân ca
 --      Chỉ xóa được nếu chưa có ChamCong / YeuCauDoiCa liên kết.
 --      Java bắt lỗi FK violation và hiển thị thông báo phù hợp.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_DeleteLichPhanCa', N'P') IS NOT NULL DROP PROCEDURE sp_DeleteLichPhanCa;
 GO
 CREATE PROCEDURE sp_DeleteLichPhanCa
@@ -424,7 +356,6 @@ END
 GO
 
 
--- ============================================================
 --  PHẦN 5 – STORED PROCEDURES: CHẤM CÔNG
 --
 --  Quy tắc tính trạng thái:
@@ -432,13 +363,10 @@ GO
 --               gioVao >  gioBatDau  + 5 phút → DiMuon
 --    Check-out: gioRa  <  gioKetThuc - 5 phút → VeSom
 --               gioRa  ≥  gioKetThuc - 5 phút → giữ nguyên (DungGio / DiMuon)
--- ============================================================
 
--- ------------------------------------------------------------
 -- 5.1  Check-in
 --      Tự động tính DungGio / DiMuon dựa trên gioBatDau của ca.
 --      Guard: nếu maLich đã có gioVao thì bỏ qua, không insert thêm.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_CheckIn', N'P') IS NOT NULL DROP PROCEDURE sp_CheckIn;
 GO
 CREATE PROCEDURE sp_CheckIn
@@ -485,12 +413,10 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 5.2  Check-out
 --      Tự động tính VeSom hoặc giữ nguyên trangThai check-in.
 --      Xử lý ca qua đêm: nếu gioKetThuc < gioBatDau thì kết
 --      thúc rơi vào ngày hôm sau.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_CheckOut', N'P') IS NOT NULL DROP PROCEDURE sp_CheckOut;
 GO
 CREATE PROCEDURE sp_CheckOut
@@ -545,10 +471,8 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 5.3  Kiểm tra đã check-in chưa
 --      Trả về cột soLuong: 0 = chưa, ≥1 = đã check-in.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_IsCheckedIn', N'P') IS NOT NULL DROP PROCEDURE sp_IsCheckedIn;
 GO
 CREATE PROCEDURE sp_IsCheckedIn
@@ -562,11 +486,9 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 5.4  Lấy bản ghi chấm công mới nhất theo mã lịch
 --      Dùng sau check-in / check-out để đọc trangThai thực tế
 --      và hiển thị cảnh báo DungGio / DiMuon / VeSom lên UI.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_GetChamCongByLich', N'P') IS NOT NULL DROP PROCEDURE sp_GetChamCongByLich;
 GO
 CREATE PROCEDURE sp_GetChamCongByLich
@@ -581,10 +503,8 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 5.5  Lịch sử chấm công của một nhân viên
 --      Sắp xếp mới nhất trước để hiển thị trên bảng.
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_GetLichSuChamCong', N'P') IS NOT NULL DROP PROCEDURE sp_GetLichSuChamCong;
 GO
 CREATE PROCEDURE sp_GetLichSuChamCong
@@ -601,13 +521,9 @@ END
 GO
 
 
--- ============================================================
 --  PHẦN 6 – STORED PROCEDURES: YÊU CẦU ĐỔI CA
--- ============================================================
 
--- ------------------------------------------------------------
 -- 6.1  Lấy toàn bộ yêu cầu đổi ca (mới nhất trước)
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindAllYeuCauDoiCa', N'P') IS NOT NULL DROP PROCEDURE sp_FindAllYeuCauDoiCa;
 GO
 CREATE PROCEDURE sp_FindAllYeuCauDoiCa
@@ -618,9 +534,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 6.2  Tìm yêu cầu theo mã
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_FindYeuCauDoiCaById', N'P') IS NOT NULL DROP PROCEDURE sp_FindYeuCauDoiCaById;
 GO
 CREATE PROCEDURE sp_FindYeuCauDoiCaById
@@ -632,11 +546,9 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 6.3  Thêm yêu cầu đổi ca
 --      @MaLichTarget = NULL  → nhờ làm giúp
 --      @MaLichTarget ≠ NULL  → đổi ca cho nhau
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_InsertYeuCauDoiCa', N'P') IS NOT NULL DROP PROCEDURE sp_InsertYeuCauDoiCa;
 GO
 CREATE PROCEDURE sp_InsertYeuCauDoiCa
@@ -656,9 +568,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
 -- 6.4  Cập nhật trạng thái yêu cầu (duyệt / từ chối)
--- ------------------------------------------------------------
 IF OBJECT_ID(N'sp_UpdateTrangThaiYeuCau', N'P') IS NOT NULL DROP PROCEDURE sp_UpdateTrangThaiYeuCau;
 GO
 CREATE PROCEDURE sp_UpdateTrangThaiYeuCau

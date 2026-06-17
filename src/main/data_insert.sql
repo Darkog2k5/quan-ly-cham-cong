@@ -1,20 +1,8 @@
--- ============================================================
---  HỆ THỐNG QUẢN LÝ CA LÀM VIỆC  –  NHÓM 8
---  File 2/2: Dữ liệu mẫu (Data Insert)
---
---  Chạy file này SAU khi đã chạy xong file 1 (schema.sql).
---  Mỗi lần chạy sẽ XÓA TOÀN BỘ dữ liệu cũ và insert lại.
---  Encoding : UTF-8 with BOM
--- ============================================================
-
 USE HeThongQuanLyCaLamViec;
 GO
 
-
--- ============================================================
---  BƯỚC 1 – XÓA DỮ LIỆU CŨ
+--  1 – XÓA DỮ LIỆU CŨ
 --  Thứ tự xóa NGƯỢC với thứ tự tạo bảng để tránh lỗi FK.
--- ============================================================
 DELETE FROM YeuCauDoiCa;
 DELETE FROM ChamCong;
 DELETE FROM LichPhanCa;
@@ -22,24 +10,7 @@ DELETE FROM CaLamViec;
 DELETE FROM NhanVien;
 GO
 
-
--- ============================================================
---  BƯỚC 2 – NHÂN VIÊN
---
---  Tài khoản | Mật khẩu | Vai trò
---  ----------|----------|--------
---  admin     | 123456   | admin
---  manager   | 123456   | manager
---  staff01   | 123456   | Staff     (NV003)
---  staff02   | 123456   | Staff     (NV004)
---  staff03   | 123456   | Staff     (NV005)
---  staff04   | 123456   | Staff     (NV006)
---  staff05   | 123456   | Staff     (NV007)
---  staff06   | 123456   | Staff     (NV008) ← bị khóa, dùng để test
---
---  Lưu ý: mật khẩu đang là plain-text cho bản demo.
---  Khi deploy thật, Java phải hash BCrypt trước khi lưu.
--- ============================================================
+--  2 – NHÂN VIÊN
 INSERT INTO NhanVien (maNV, hoTen, vaiTro, taiKhoan, matKhau, trangThai) VALUES
 ('NV001', N'Nguyễn Văn An',   'admin',   'admin',   '123456', N'HoatDong'),
 ('NV002', N'Trần Minh Khang', 'manager', 'manager', '123456', N'HoatDong'),
@@ -51,25 +22,14 @@ INSERT INTO NhanVien (maNV, hoTen, vaiTro, taiKhoan, matKhau, trangThai) VALUES
 ('NV008', N'Hoàng Gia Bảo',   'Staff',   'staff06', '123456', N'NgungHoatDong');
 GO
 
-
--- ============================================================
---  BƯỚC 3 – CA LÀM VIỆC
---
---  Mã  | Tên      | Giờ bắt đầu | Giờ kết thúc
---  ----|----------|-------------|-------------
---  CA01| Ca sáng  | 07:00       | 12:00
---  CA02| Ca chiều | 13:00       | 18:00
---  CA03| Ca tối   | 18:00       | 22:00
--- ============================================================
+--  3 – CA LÀM VIỆC
 INSERT INTO CaLamViec (maCa, tenCa, gioBatDau, gioKetThuc) VALUES
 ('CA01', N'Ca sáng',  '07:00:00', '12:00:00'),
 ('CA02', N'Ca chiều', '13:00:00', '18:00:00'),
 ('CA03', N'Ca tối',   '18:00:00', '22:00:00');
 GO
 
-
--- ============================================================
---  BƯỚC 4 – LỊCH PHÂN CA
+--  4 – LỊCH PHÂN CA
 --
 --  Chia làm 2 nhóm:
 --
@@ -80,7 +40,6 @@ GO
 --  [B] TUẦN NÀY  (15–19/06/2026) – chưa có chấm công
 --      → Có thể SỬA và XÓA thoải mái
 --      → Dùng để test tính năng xếp lịch của Quản lý
--- ============================================================
 INSERT INTO LichPhanCa (maLich, maNV, maCa, ngayLamViec, trangThai) VALUES
 
 -- [A] Thứ 2, 08/06 ------------------------------------------
@@ -143,30 +102,11 @@ INSERT INTO LichPhanCa (maLich, maNV, maCa, ngayLamViec, trangThai) VALUES
 ('L039', 'NV008', 'CA02', '2026-06-19', N'DaPhan');
 GO
 
-
--- ============================================================
---  BƯỚC 5 – CHẤM CÔNG
+--  5 – CHẤM CÔNG
 --
 --  Chỉ insert cho các lịch TUẦN TRƯỚC (L001–L027).
 --  trangThai được set thủ công cho phù hợp dữ liệu demo.
 --  Trong thực tế, trangThai do sp_CheckIn / sp_CheckOut tính.
---
---  Giải thích từng bản ghi:
---  ┌────────┬───────┬──────┬──────────────┬───────────────┬───────────┐
---  │ Mã CC  │ Lịch  │ NV   │ Giờ vào      │ Giờ ra        │ Trạng thái│
---  ├────────┼───────┼──────┼──────────────┼───────────────┼───────────┤
---  │ CC001  │ L001  │ NV003│ 06:55 (–5')  │ 12:00         │ DungGio   │
---  │ CC002  │ L002  │ NV004│ 13:10 (+10') │ 18:00         │ DiMuon    │
---  │ CC003  │ L003  │ NV005│ 18:00 đúng   │ 21:30 (–30')  │ VeSom     │
---  │ CC004  │ L004  │ NV006│ 07:06 (+6')  │ 12:00         │ DiMuon    │
---  │ CC005  │ L007  │ NV003│ 13:00 đúng   │ 18:00         │ DungGio   │
---  │ CC006  │ L008  │ NV004│ 06:58 (–2')  │ 12:00         │ DungGio   │
---  │ CC007  │ L013  │ NV003│ 07:02 (+2')  │ 12:00         │ DungGio   │ ← trong buffer 5'
---  │ CC008  │ L017  │ NV003│ 07:00 đúng   │ 12:00         │ DungGio   │
---  │ CC009  │ L018  │ NV004│ 13:05 (+5')  │ 18:00         │ DungGio   │ ← đúng buffer 5'
---  │ CC010  │ L023  │ NV003│ 06:50 (–10') │ NULL          │ DungGio   │ ← chưa checkout
---  └────────┴───────┴──────┴──────────────┴───────────────┴───────────┘
--- ============================================================
 INSERT INTO ChamCong (maCong, maLich, gioVao, gioRa, trangThai, minhChung) VALUES
 ('CC001', 'L001', '2026-06-08 06:55:00', '2026-06-08 12:00:00', N'DungGio', NULL),
 ('CC002', 'L002', '2026-06-08 13:10:00', '2026-06-08 18:00:00', N'DiMuon',  NULL),
@@ -180,31 +120,15 @@ INSERT INTO ChamCong (maCong, maLich, gioVao, gioRa, trangThai, minhChung) VALUE
 ('CC010', 'L023', '2026-06-12 06:50:00', NULL,                  N'DungGio', NULL);
 GO
 
-
--- ============================================================
---  BƯỚC 6 – YÊU CẦU ĐỔI CA
---
---  Mã     | Lịch gốc | NV target | Lịch target | Loại          | Trạng thái
---  -------|----------|-----------|-------------|---------------|------------
---  YC001  | L020     | NV004     | NULL        | Nhờ làm giúp  | ChoDuyet
---  YC002  | L011     | NV003     | L001        | Đổi cho nhau  | DaChapNhan
---  YC003  | L026     | NV007     | L027        | Đổi cho nhau  | ChoDuyet
---
---  YC001: NV006 nhờ NV004 làm giúp ca L020 (không đổi lại)
---  YC002: NV007 đã được chấp nhận đổi ca L011 với NV003 (ca L001)
---  YC003: NV006 muốn đổi ca L026 lấy ca L027 của NV007, đang chờ
--- ============================================================
+--  6 – YÊU CẦU ĐỔI CA
 INSERT INTO YeuCauDoiCa (maYeuCau, maLichGoc, maNVTarget, maLichTarget, lyDo, trangThai, ngayTao) VALUES
 ('YC001', 'L020', 'NV004', NULL,   N'Bận việc gia đình', N'ChoDuyet',   GETDATE()),
 ('YC002', 'L011', 'NV003', 'L001', N'Đổi ca để đi học',  N'DaChapNhan', GETDATE()),
 ('YC003', 'L026', 'NV007', 'L027', N'Có lịch cá nhân',   N'ChoDuyet',   GETDATE());
 GO
 
-
--- ============================================================
---  BƯỚC 7 – KIỂM TRA NHANH
+--  7 – KIỂM TRA NHANH
 --  Bỏ comment từng lệnh SELECT để kiểm tra sau khi insert.
--- ============================================================
 
 /*
 -- Tổng số bản ghi từng bảng

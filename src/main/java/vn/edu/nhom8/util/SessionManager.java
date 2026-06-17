@@ -2,9 +2,7 @@ package vn.edu.nhom8.util;
 
 import vn.edu.nhom8.model.NhanVien;
 
-/**
- * Singleton lưu thông tin phiên đăng nhập hiện tại.
- */
+// Singleton lưu thông tin phiên đăng nhập hiện tại.
 public class SessionManager {
 
     private static SessionManager instance;

@@ -111,7 +111,7 @@ public class NhanVienDAO implements INhanVienDAO {
         return false;
     }
 
-    // ── Activate (mở khóa tài khoản) – chỉ update trangThai, KHÔNG đụng matKhau ──
+    // ── Activate (mở khóa tài khoản) ───────────────────────────────────────────
     public boolean activate(String maNV) {
         String sql = "UPDATE NhanVien SET trangThai = N'HoatDong' WHERE maNV = ?";
         try (Connection con = new DBConnection().getConnection();
@@ -147,7 +147,6 @@ public class NhanVienDAO implements INhanVienDAO {
         try (java.sql.Connection conn = new vn.edu.nhom8.util.DBConnection().getConnection();
              java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
             
-            // LƯU TRỰC TIẾP MẬT KHẨU THÔ (Không dùng BCrypt nữa)
             ps.setString(1, newPassword); 
             ps.setString(2, taiKhoan); 
             

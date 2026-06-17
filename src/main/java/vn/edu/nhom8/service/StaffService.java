@@ -104,7 +104,7 @@ public class StaffService {
         String msg;
         if ("DiMuon".equals(trangThai)) {
             String gioVao = new SimpleDateFormat("HH:mm:ss").format(cc.getGioVao());
-            msg = "Check-in thành công lúc " + gioVao + ".\n⚠️ Bạn đã đi muộn!";
+            msg = "Check-in thành công lúc " + gioVao + ".\nBạn đã đi muộn!";
         } else {
             String gioVao = new SimpleDateFormat("HH:mm:ss").format(cc.getGioVao());
             msg = "Check-in thành công lúc " + gioVao + ". Đúng giờ!";
@@ -133,7 +133,7 @@ public class StaffService {
         String gioRa = new SimpleDateFormat("HH:mm:ss").format(cc.getGioRa());
         switch (trangThai) {
             case "VeSom":
-                msg = "Check-out thành công lúc " + gioRa + ".\n⚠️ Bạn về sớm trước giờ kết thúc ca!";
+                msg = "Check-out thành công lúc " + gioRa + ".\nBạn về sớm trước giờ kết thúc ca!";
                 break;
             case "DiMuon":
                 msg = "Check-out thành công lúc " + gioRa + ". (Bạn đã vào muộn nhưng ra đúng giờ.)";

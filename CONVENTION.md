@@ -22,7 +22,7 @@
 
 ## 4. Bảo mật & Database
 
-- Không lưu plaintext password. Bắt buộc dùng `BCrypt` để hash mật khẩu.
+- Không lưu plaintext password.
 - File cấu hình DB phải nằm ở `src/main/resources/db.properties`. Không ai được hard-code chuỗi kết nối (connection string) vào source code Java.
 
 ## 5. Quy tắc Git & Họp nhóm

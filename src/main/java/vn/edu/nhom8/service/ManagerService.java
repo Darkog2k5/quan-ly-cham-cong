@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Business logic cho màn hình Quản lý (F3.1 – F3.3).
@@ -73,7 +72,7 @@ public class ManagerService {
             if (trung) {
                 NhanVien nv = nvDAO.findById(maNV);
                 outTrungCa.add(nv != null ? nv.getHoTen() : maNV);
-                continue; // bỏ qua NV này
+                continue;
             }
 
             // Tạo mã lịch và lưu
@@ -162,7 +161,7 @@ public class ManagerService {
         boolean ok = ycDAO.update(yc);
         if (!ok) return "Duyệt thất bại. Vui lòng thử lại.";
 
-        return null; // thành công
+        return null;
     }
 
     /**

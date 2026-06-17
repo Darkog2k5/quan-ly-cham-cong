@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package vn.edu.nhom8.model;
 
 import java.sql.Timestamp;
@@ -17,7 +13,6 @@ public class YeuCauDoiCa {
 
     public YeuCauDoiCa() {}
 
-    /** Constructor đầy đủ (có maLichTarget). */
     public YeuCauDoiCa(String maYeuCau, String maLichGoc, String maNVTarget, String maLichTarget,
                         String lyDo, String trangThai, Timestamp ngayTao) {
         this.maYeuCau = maYeuCau;
@@ -29,7 +24,6 @@ public class YeuCauDoiCa {
         this.ngayTao = ngayTao;
     }
 
-    /** Constructor cũ (không có maLichTarget) - giữ để tương thích code cũ, maLichTarget = null. */
     public YeuCauDoiCa(String maYeuCau, String maLichGoc, String maNVTarget,
                         String lyDo, String trangThai, Timestamp ngayTao) {
         this(maYeuCau, maLichGoc, maNVTarget, null, lyDo, trangThai, ngayTao);
