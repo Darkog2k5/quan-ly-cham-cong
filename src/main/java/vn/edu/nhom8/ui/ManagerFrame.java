@@ -41,9 +41,6 @@ import java.util.List;
  * Tab 1: Xếp lịch nhân viên  (F3.1)
  * Tab 2: Duyệt đổi ca        (F3.2 + F3.3)
  * Tab 3: Xem lịch tổng       (F3.2 hỗ trợ)
- *
- * F3.4 (Xuất báo cáo) do Kiệt phụ trách – để sẵn tab nhưng không code.
- * Mọi nghiệp vụ nằm trong ManagerService – class này chỉ lo UI.
  */
 public class ManagerFrame extends BaseFrame {
 
@@ -79,8 +76,7 @@ public class ManagerFrame extends BaseFrame {
     private JLabel   lblTuan;
     private Date     tuanBatDau;  // Thứ 2 của tuần hiện tại
 
-    // ─────────────────────────────────────────────────────────────────────────
-
+    //Constructor
     public ManagerFrame(INhanVienDAO nvDAO,
                         ILichPhanCaDAO lichDAO,
                         IYeuCauDoiCaDAO ycDAO) {
@@ -98,8 +94,9 @@ public class ManagerFrame extends BaseFrame {
         this(null, null, null);
     }
 
-    // ── Toolbar ───────────────────────────────────────────────────────────────
+    //Toolbar
 
+    //thanh công cụ (Toolbar) cho từng vai trò trong ManagerFrame
     @Override
     protected JPanel buildToolbarForRole(int roleTabIndex) {
         if (roleTabIndex != ROLE_TAB_MANAGER) return null;
@@ -124,11 +121,11 @@ public class ManagerFrame extends BaseFrame {
         return tb;
     }
 
-    // ── Build content ─────────────────────────────────────────────────────────
-
+    //Build content
     // Stat bar (4 số tổng quan)
     private JPanel statBar;
 
+    //khung giao diện trung tâm của ManagerFrame
     private void buildContent() {
         statBar = buildStatBar();
         getRoleContentPanel(ROLE_TAB_MANAGER).add(statBar, BorderLayout.NORTH);
@@ -149,8 +146,7 @@ public class ManagerFrame extends BaseFrame {
         getRoleContentPanel(ROLE_TAB_MANAGER).add(tabs, BorderLayout.CENTER);
     }
 
-    // ── Stat bar ──────────────────────────────────────────────────────────────
-
+    //Stat bar (dashboard)
     private JPanel buildStatBar() {
         JPanel bar = new JPanel(new GridLayout(1, 3, 12, 0));
         bar.setOpaque(false);
@@ -162,6 +158,7 @@ public class ManagerFrame extends BaseFrame {
         return bar;
     }
 
+    //tạo một thẻ thống kê (Statistic Card) trong statBar
     private JPanel statCard(String label, String value, Color color) {
         JPanel card = createCard(null);
         card.setLayout(new BorderLayout());
@@ -202,6 +199,7 @@ public class ManagerFrame extends BaseFrame {
         }.execute();
     }
 
+    //cập nhật giá trị hiển thị trên một thẻ thống kê (stat card)
     private void updateStatCard(int idx, String value) {
         // Lấy JLabel số trong card (component đầu tiên trong BorderLayout.CENTER)
         JPanel card = (JPanel) statBar.getComponent(idx);
@@ -213,14 +211,13 @@ public class ManagerFrame extends BaseFrame {
         }
     }
 
-    // ── Tab 1: Xếp lịch (F3.1) ────────────────────────────────────────────────
-
+    //Tab 1: Xếp lịch (F3.1)
     private JPanel buildXepLichTab() {
         JPanel panel = new JPanel(new GridLayout(1, 2, 14, 0));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // ── Form xếp lịch ──────────────────────────────────────────────────────
+        //Form xếp lịch
         JPanel formCard = createCard("Xếp lịch cho nhân viên");
         JPanel body = new JPanel(); body.setOpaque(false);
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -345,7 +342,7 @@ public class ManagerFrame extends BaseFrame {
         body.add(btnLuu);
         formCard.add(body, BorderLayout.CENTER);
 
-        // ── Bảng lịch đã xếp ──────────────────────────────────────────────────
+        // Bảng lịch đã xếp
         JPanel rightCard = createCard("Lịch đã xếp tháng này");
 
         JPanel rightHeader = new JPanel(new BorderLayout()); rightHeader.setOpaque(false);
@@ -484,8 +481,7 @@ public class ManagerFrame extends BaseFrame {
         }.execute();
     }
 
-    // ── Tab 2: Duyệt đổi ca (F3.2 + F3.3) ───────────────────────────────────
-
+    //Tab 2: Duyệt đổi ca (F3.2 + F3.3)
     private JPanel buildDuyetTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
@@ -600,14 +596,14 @@ public class ManagerFrame extends BaseFrame {
         }.execute();
     }
 
-    // ── Tab 4: Báo cáo chấm công (F3.4) ─────────────────────────────────────
+    //Tab 4: Báo cáo chấm công (F3.4)
 
     private JPanel buildBaoCaoTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(12, 0, 0, 0));
 
-        // ── Header bộ lọc ──────────────────────────────────────────────────
+        // Header bộ lọc
         JPanel filterCard = createCard("Lọc báo cáo");
         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 4));
         filterRow.setOpaque(false);
@@ -654,7 +650,7 @@ public class ManagerFrame extends BaseFrame {
 
         filterCard.add(filterRow, BorderLayout.CENTER);
 
-        // ── Bảng kết quả ──────────────────────────────────────────────────
+        //Bảng kết quả
         JPanel tableCard = createCard("Dữ liệu chấm công");
         String[] cols = {"Mã NV", "Họ tên", "Ngày làm việc", "Ca", "Giờ vào",
                          "Giờ ra", "Trạng thái CC", "Số giờ làm"};
@@ -736,7 +732,7 @@ public class ManagerFrame extends BaseFrame {
                 try (XSSFWorkbook wb = new XSSFWorkbook()) {
                     XSSFSheet sheet = wb.createSheet("ChamCong");
 
-                    // ── Styles ──────────────────────────────────────────
+                    //Styles
                     XSSFCellStyle headerStyle = wb.createCellStyle();
                     headerStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)26,(byte)54,(byte)93}, null));
                     headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
@@ -758,7 +754,7 @@ public class ManagerFrame extends BaseFrame {
                     evenStyle.setFillForegroundColor(new XSSFColor(new byte[]{(byte)248,(byte)250,(byte)252}, null));
                     evenStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-                    // ── Tiêu đề báo cáo ─────────────────────────────────
+                    //Tiêu đề báo cáo 
                     XSSFRow titleRow = sheet.createRow(0);
                     XSSFCell titleCell = titleRow.createCell(0);
                     titleCell.setCellValue("BÁO CÁO CHẤM CÔNG – THÁNG " + thang + "/" + nam);
@@ -770,7 +766,7 @@ public class ManagerFrame extends BaseFrame {
 
                     sheet.createRow(2); // dòng trống
 
-                    // ── Header cột ───────────────────────────────────────
+                    //Header cột
                     String[] headers = {"Mã NV", "Họ tên", "Ngày làm việc", "Ca",
                                         "Giờ vào", "Giờ ra", "Trạng thái CC", "Số giờ làm"};
                     XSSFRow hRow = sheet.createRow(3);
@@ -780,7 +776,7 @@ public class ManagerFrame extends BaseFrame {
                         cell.setCellStyle(headerStyle);
                     }
 
-                    // ── Dữ liệu ─────────────────────────────────────────
+                    //Dữ liệu
                     int rowIdx = 4;
                     for (int r = 0; r < baoCaoModel.getRowCount(); r++) {
                         XSSFRow dataRow = sheet.createRow(rowIdx++);
@@ -793,7 +789,7 @@ public class ManagerFrame extends BaseFrame {
                         }
                     }
 
-                    // ── Auto-size ────────────────────────────────────────
+                    //Auto-size
                     for (int c = 0; c < headers.length; c++) sheet.autoSizeColumn(c);
 
                     try (FileOutputStream fos = new FileOutputStream(finalFile)) {
@@ -819,8 +815,7 @@ public class ManagerFrame extends BaseFrame {
         }.execute();
     }
 
-    // ── Tab 3: Lịch tổng ──────────────────────────────────────────────────────
-
+    //Tab 3: Lịch tổng 
     private JPanel buildLichTongTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setOpaque(false);
@@ -969,8 +964,7 @@ public class ManagerFrame extends BaseFrame {
         return l;
     }
 
-    // ── Refresh ───────────────────────────────────────────────────────────────
-
+    //Refresh
     private void refreshTab() {
         int idx = tabs.getSelectedIndex();
         if (idx == TAB_XEPLICH)  loadLichDaXep();
@@ -980,8 +974,7 @@ public class ManagerFrame extends BaseFrame {
         loadStatBar();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
+    //Helpers
     /** Tìm ngày Thứ 2 của tuần hiện tại. */
     private Date getMondayOfCurrentWeek() {
         Calendar cal = Calendar.getInstance();
@@ -991,12 +984,17 @@ public class ManagerFrame extends BaseFrame {
         return cal.getTime();
     }
 
+    /*
+        tính các ngày trước/sau để hiển thị lịch làm việc, 
+        thống kê chấm công hoặc tìm dữ liệu theo khoảng thời gian
+    */
     private Date addDays(Date d, int days) {
         Calendar cal = Calendar.getInstance();
         cal.setTime(d); cal.add(Calendar.DAY_OF_MONTH, days);
         return cal.getTime();
     }
 
+    //giao diện thống nhất (font, màu, căn trái)
     private JLabel fLabel(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("Segoe UI", Font.BOLD, 11)); l.setForeground(UITheme.TEXT2);
@@ -1004,6 +1002,7 @@ public class ManagerFrame extends BaseFrame {
         return l;
     }
 
+    //tạo một chú thích (legend) có ô màu và dòng chữ mô tả bên cạnh
     private JPanel dotLegend(Color bg, Color fg, String label) {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); p.setOpaque(false);
         JLabel box = new JLabel("   "); box.setBackground(bg); box.setOpaque(true);

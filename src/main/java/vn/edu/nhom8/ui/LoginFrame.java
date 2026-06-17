@@ -24,14 +24,16 @@ public class LoginFrame extends JFrame {
     private int loginAttempts = 0;
     private static final int MAX_ATTEMPTS = 5;
 
+    //constructor
     public LoginFrame() {
         setTitle("WorkShift Pro — Đăng nhập");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 700);
-        setLocationRelativeTo(null);
+        setLocationRelativeTo(null); //Đưa cửa sổ ra giữa màn hình
         initUI();
     }
 
+    //chia cửa sổ thành 2 phần (trái và phải)
     private void initUI() {
         JPanel root = new JPanel(new GridLayout(1, 2));
         root.setBackground(UITheme.BG_PAGE);
@@ -40,6 +42,8 @@ public class LoginFrame extends JFrame {
         setContentPane(root);
     }
 
+    //hiển thị nền gradient, logo hệ thống
+    //tiêu đề và các tính năng nổi bật của phần mềm
     private JPanel buildLeftPanel() {
         JPanel panel = new JPanel() {
             @Override
@@ -121,6 +125,8 @@ public class LoginFrame extends JFrame {
         return panel;
     }
 
+    //phần bên phải của màn hình đăng nhập, bao gồm tiêu đề, ô nhập tài khoản, mật khẩu
+    //checkbox ghi nhớ mật khẩu và liên kết "Quên mật khẩu"
     private JPanel buildRightPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(Color.WHITE);
@@ -145,7 +151,7 @@ public class LoginFrame extends JFrame {
         lblSub.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20)); // Kéo giãn full ngang
 
         JLabel lblUser = formLabel("Tên đăng nhập");
-        txtTaiKhoan = createTextField("Nhập tên đăng nhập"); // Đã xóa emoji trong chữ mờ
+        txtTaiKhoan = createTextField("Nhập tên đăng nhập");
 
         JLabel lblPwd = formLabel("Mật khẩu");
         txtMatKhau = new JPasswordField();
@@ -220,6 +226,7 @@ public class LoginFrame extends JFrame {
         return panel;
     }
 
+    //xử lý đăng nhập
     private void doLogin() {
         if (loginAttempts >= MAX_ATTEMPTS) {
             lblError.setText("Tài khoản bị khóa tạm thời do nhập sai quá " + MAX_ATTEMPTS + " lần.");
@@ -233,9 +240,8 @@ public class LoginFrame extends JFrame {
             lblError.setText("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
             return;
         }
-
+        //Check trong database
         NhanVien nv = nhanVienDAO.login(taiKhoan, matKhau);
-
         if (nv == null) {
             loginAttempts++;
             int con = MAX_ATTEMPTS - loginAttempts;
@@ -255,6 +261,7 @@ public class LoginFrame extends JFrame {
         openMainFrame(nv);
     }
 
+    //mở giao diện chính tương ứng với vai trò của người dùng sau khi đăng nhập thành công
     private void openMainFrame(NhanVien nv) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -273,6 +280,7 @@ public class LoginFrame extends JFrame {
         });
     }
 
+    //hàm tiện ích dùng để tạo các JLabel cho form nhập liệu
     private JLabel formLabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -281,6 +289,7 @@ public class LoginFrame extends JFrame {
         return lbl;
     }
 
+    //tạo ra một JTextField có chữ gợi ý
     private JTextField createTextField(String placeholder) {
         JTextField tf = new JTextField() {
             @Override protected void paintComponent(Graphics g) {
@@ -298,6 +307,8 @@ public class LoginFrame extends JFrame {
         return tf;
     }
 
+    //đồng bộ giao diện tất cả các ô nhập liệu
+    //tạo hiệu ứng highlight khi người dùng đang nhập dữ liệu
     private void styleInput(JComponent tf) {
         tf.setFont(UITheme.FONT_BODY);
         tf.setBackground(UITheme.BG_INPUT);
@@ -314,6 +325,7 @@ public class LoginFrame extends JFrame {
         });
     }
 
+    //bo góc, đổi màu khi rê chuột hoặc nhấn
     private JButton createPrimaryButton(String text, Color bg) {
         JButton btn = new JButton(text) {
             @Override protected void paintComponent(Graphics g) {
@@ -335,6 +347,7 @@ public class LoginFrame extends JFrame {
         return btn;
     }
 
+    //tạo một nút bấm có nền trắng và viền mỏng, khi đưa chuột vào thì viền và chữ đổi sang màu xanh
     private JButton createOutlineButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(UITheme.FONT_BODY);

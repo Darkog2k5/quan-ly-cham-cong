@@ -29,6 +29,7 @@ public class AdminFrame extends BaseFrame {
     private final CaLamViecDAO caDAO  = new CaLamViecDAO();
     private final NhanVienDAO  nvDAO  = new NhanVienDAO();
 
+    //Constructor
     public AdminFrame() {
         super("Quản trị hệ thống");
         buildContent();
@@ -39,10 +40,8 @@ public class AdminFrame extends BaseFrame {
         setVisible(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
     //  TOOLBAR
-    // ═════════════════════════════════════════════════════════════════════════
-
+    //dùng để tạo thanh công cụ (toolbar) cho Admin.
     @Override
     protected JPanel buildToolbarForRole(int roleTabIndex) {
         if (roleTabIndex != ROLE_TAB_ADMIN) return null;
@@ -83,10 +82,9 @@ public class AdminFrame extends BaseFrame {
         return tb;
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
     //  CONTENT
-    // ═════════════════════════════════════════════════════════════════════════
-
+    //Tạo 2 tab của Admin là:
+    //Cấu hình ca làm và Quản lý tài khoản
     private void buildContent() {
         tabs = new JTabbedPane(JTabbedPane.TOP);
         tabs.setFont(UITheme.FONT_BODY);
@@ -95,8 +93,12 @@ public class AdminFrame extends BaseFrame {
         getRoleContentPanel(ROLE_TAB_ADMIN).add(tabs, BorderLayout.CENTER);
     }
 
-    // ── Tab cấu hình ca ──────────────────────────────────────────────────────
-
+    //Tab cấu hình ca
+    /*
+        Tạo form thêm ca làm việc (bên trái)
+        Tạo bảng danh sách ca làm việc (bên phải)
+        Load dữ liệu từ Database lên bảng.
+    */
     private JPanel buildCaLamViecTab() {
         JPanel panel = new JPanel(new GridLayout(1, 2, 14, 0));
         panel.setOpaque(false);
@@ -229,8 +231,12 @@ public class AdminFrame extends BaseFrame {
         }.execute();
     }
 
-    // ── Tab quản lý tài khoản ────────────────────────────────────────────────
-
+    //Tab quản lý tài khoản 
+    /*
+        Xây dựng giao diện quản lý tài khoản cho Admin, bao gồm thanh tìm kiếm, 
+        các nút chức năng (Thêm, Làm mới, Sửa, Khóa, Mở khóa) và bảng hiển thị danh sách nhân viên. 
+        Gắn các sự kiện để Admin có thể tìm kiếm, thêm mới và chỉnh sửa tài khoản
+    */
     private JPanel buildTaiKhoanTab() {
         JPanel panel = new JPanel(new BorderLayout(0, 12));
         panel.setOpaque(false);
@@ -340,10 +346,10 @@ public class AdminFrame extends BaseFrame {
         }.execute();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    //  DIALOGS
-    // ═════════════════════════════════════════════════════════════════════════
 
+    //----DIALOGS-----------
+
+    //hiển thị hộp thoại (JDialog) thêm mới hoặc chỉnh sửa ca làm việc
     private void showFormThemCa(boolean isEdit, int row) {
         JDialog dlg = new JDialog(this, isEdit ? "Sửa ca làm việc" : "Thêm ca làm việc", true);
         dlg.setSize(380, 280);
@@ -414,6 +420,7 @@ public class AdminFrame extends BaseFrame {
         dlg.setVisible(true);
     }
 
+    //hiển thị hộp thoại thêm mới hoặc chỉnh sửa tài khoản nhân viên
     private void showFormThemTK(boolean isEdit, int row) {
         JDialog dlg = new JDialog(this, isEdit ? "Sửa tài khoản" : "Thêm tài khoản mới", true);
         dlg.setSize(420, 340);
@@ -496,32 +503,35 @@ public class AdminFrame extends BaseFrame {
         dlg.setVisible(true);
     }
 
-    // ── Các action từ toolbar ─────────────────────────────────────────────────
+    //Các action từ toolbar
 
+    //hiển thị một hộp thoại hướng dẫn người dùng cách sửa ca
     private void suaCaSelected() {
         JOptionPane.showMessageDialog(this,
                 "Vui lòng vào tab Ca làm và double-click vào hàng cần sửa.",
                 "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
     }
-
+    //hiển thị một hộp thoại hướng dẫn người dùng cách xóa ca
     private void xoaCaSelected() {
         JOptionPane.showMessageDialog(this,
                 "Vui lòng vào tab Ca làm và chọn hàng cần xóa.",
                 "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    //hiển thị một hộp thoại hướng dẫn người dùng cách sửa TK
     private void suaTKSelected() {
         JOptionPane.showMessageDialog(this,
                 "Vui lòng vào tab Tài khoản và double-click vào hàng cần sửa.",
                 "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
     }
-
+    //hiển thị một hộp thoại hướng dẫn người dùng cách khóa TK
     private void khoaTKSelected() {
         JOptionPane.showMessageDialog(this,
                 "Vui lòng vào tab Tài khoản, chọn hàng rồi nhấn Khóa TK.",
                 "Hướng dẫn", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    //dùng để khóa hoặc mở khóa tài khoản nhân viên
     private void toggleKhoa(JTable tbl, boolean khoa) {
         int row = tbl.getSelectedRow();
         if (row < 0) { showError("Vui lòng chọn tài khoản."); return; }
@@ -555,8 +565,8 @@ public class AdminFrame extends BaseFrame {
         return nv;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
+    //Helpers
+    //tạo và trả về một JTextField đã được định dạng sẵn
     private JTextField inputField() {
         JTextField tf = new JTextField();
         tf.setFont(UITheme.FONT_BODY);
@@ -567,7 +577,7 @@ public class AdminFrame extends BaseFrame {
                 new EmptyBorder(4, 8, 4, 8)));
         return tf;
     }
-
+    //cho phép người dùng chọn thời gian (giờ : phút) và đặt sẵn giá trị ban đầu là h:m
     private JSpinner timeSpinner(int h, int m) {
         java.util.Calendar cal = java.util.Calendar.getInstance();
         cal.set(java.util.Calendar.HOUR_OF_DAY, h);
@@ -581,6 +591,7 @@ public class AdminFrame extends BaseFrame {
         return sp;
     }
 
+    //tạo và trả về một JLabel đã được định dạng sẵn
     private JLabel flabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 11));
